@@ -719,7 +719,7 @@ async function loadWorkflow() {
     render();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to sync work records.";
-    showState(`${message} Check Google Sheet link access or local network availability.`, "error");
+    showState(`${message} Check the Notion connection, page sharing, or local network availability.`, "error");
     setSyncLine("Sync failed", "error");
   } finally {
     elements.refresh.classList.remove("is-loading");

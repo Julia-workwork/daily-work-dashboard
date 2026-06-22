@@ -56,6 +56,40 @@ test("GET /api/workflow returns dashboard JSON", async () => {
   assert.equal(payload.weeklyReview.draftWeeklyReport, "周报");
 });
 
+test("GET /api/workflow prefers Notion when Daily Work is configured", async () => {
+  const calls = [];
+  const server = createAppServer({
+    notionToken: "secret-token",
+    notionDailyWorkPageId: "daily-page",
+    notionTasksDataSourceId: "tasks-source",
+    fetchNotionSource: async (options) => {
+      calls.push(options);
+      return {
+        dailyExtracts: [["Date"], ["2026-06-22"]],
+        tasks: [["Task Name", "Priority", "Status"], ["From Notion", "P1", "In Progress"]],
+        weeklyReview: [["Week Range", "Draft Weekly Report"], ["2026.06.22-2026.06.27", "Notion weekly report"]],
+        categorySummary: [["Category", "Open Tasks"], ["Content", "1"]],
+        settings: [["Type", "Value"], ["Priority", "P1"]],
+        source: { kind: "notion", month: "2026-06" },
+      };
+    },
+    fetchTabs: async () => {
+      throw new Error("Should not read Google Sheet when Notion is configured");
+    },
+    today: "2026-06-22",
+  });
+
+  const response = await request(server, "/api/workflow");
+  const payload = response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.source.kind, "notion");
+  assert.equal(payload.tasks[0].taskName, "From Notion");
+  assert.equal(payload.weeklyReview.draftWeeklyReport, "Notion weekly report");
+  assert.equal(calls[0].dailyWorkPageId, "daily-page");
+  assert.equal(calls[0].tasksDataSourceId, "tasks-source");
+});
+
 test("GET /api/workflow returns JSON error on fetch failure", async () => {
   const server = createAppServer({
     fetchTabs: async () => {

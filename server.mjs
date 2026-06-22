@@ -6,11 +6,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildDashboard, DEFAULT_SPREADSHEET_ID } from "./lib/workflow-domain.mjs";
 import { fetchWorkflowTabs, workflowSource } from "./lib/google-sheets.mjs";
 import { createNotionTask as createTaskInNotion } from "./lib/notion-tasks.mjs";
+import { notionWorkflowSource } from "./lib/notion-workflow.mjs";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const staticRoot = join(root, "static");
 const port = Number(process.env.PORT || 5175);
 const host = resolveListenHost(process.env);
+const DEFAULT_NOTION_DAILY_WORK_PAGE_ID = "3e556556394f460591dd54bedc533cfd";
 const DEFAULT_NOTION_TASKS_DATA_SOURCE_ID = "386cbc99-c1ab-8042-a401-000bc1689dd9";
 
 const mimeTypes = {
@@ -115,9 +117,12 @@ async function readSafeStatic(pathname) {
 
 export function createAppServer(options = {}) {
   const fetchTabs = options.fetchTabs || fetchWorkflowTabs;
+  const fetchNotionSource = options.fetchNotionSource || notionWorkflowSource;
   const createNotionTask = options.createNotionTask || createTaskInNotion;
   const spreadsheetId = options.spreadsheetId || process.env.WORKFLOW_SPREADSHEET_ID || DEFAULT_SPREADSHEET_ID;
   const notionToken = options.notionToken ?? process.env.NOTION_TOKEN ?? process.env.NOTION_API_KEY ?? "";
+  const notionDailyWorkPageId =
+    options.notionDailyWorkPageId || process.env.NOTION_DAILY_WORK_PAGE_ID || DEFAULT_NOTION_DAILY_WORK_PAGE_ID;
   const notionTasksDataSourceId =
     options.notionTasksDataSourceId || process.env.NOTION_TASKS_DATA_SOURCE_ID || DEFAULT_NOTION_TASKS_DATA_SOURCE_ID;
   const dashboardPassword = clean(options.dashboardPassword ?? process.env.DASHBOARD_PASSWORD ?? "");
@@ -150,10 +155,18 @@ export function createAppServer(options = {}) {
           sendJson(res, 401, { authRequired: true, error: "Password required" });
           return;
         }
-        const rawTabs = await fetchTabs({ spreadsheetId });
+        const useNotionSource = Boolean(notionToken && notionDailyWorkPageId);
+        const rawTabs = useNotionSource
+          ? await fetchNotionSource({
+              token: notionToken,
+              dailyWorkPageId: notionDailyWorkPageId,
+              tasksDataSourceId: notionTasksDataSourceId,
+              today,
+            })
+          : await fetchTabs({ spreadsheetId });
         const payload = buildDashboard(rawTabs, {
           today,
-          ...workflowSource({ spreadsheetId }),
+          ...(rawTabs.source ? { source: rawTabs.source } : workflowSource({ spreadsheetId })),
         });
         sendJson(res, 200, payload);
         return;

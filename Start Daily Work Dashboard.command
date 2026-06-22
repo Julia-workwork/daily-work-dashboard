@@ -26,11 +26,11 @@ echo "Open this URL in your browser:"
 echo "http://127.0.0.1:5175/"
 echo ""
 if [ -z "$NOTION_TOKEN" ] && [ -z "$NOTION_API_KEY" ]; then
-  echo "Notion save is not configured yet."
-  echo "New tasks will stay as local drafts unless NOTION_TOKEN is set in .env.local."
+  echo "Notion sync is not configured yet."
+  echo "The dashboard will use the fallback source unless NOTION_TOKEN is set in .env.local."
   echo ""
 else
-  echo "Notion save is enabled for Workflow Tasks."
+  echo "Notion sync is enabled for Daily Work and Workflow Tasks."
   echo ""
 fi
 echo "Keep this window open while using the dashboard."

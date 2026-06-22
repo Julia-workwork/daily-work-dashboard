@@ -10,6 +10,8 @@ services:
         value: production
       - key: NOTION_TASKS_DATA_SOURCE_ID
         value: 386cbc99-c1ab-8042-a401-000bc1689dd9
+      - key: NOTION_DAILY_WORK_PAGE_ID
+        value: 3e556556394f460591dd54bedc533cfd
       - key: WORKFLOW_SPREADSHEET_ID
         value: 1naGkpafFZAuhmd--P-Qs_YZ94Dom1TVd0sw3-RVyX4A
       - key: NOTION_TOKEN
