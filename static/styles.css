@@ -196,6 +196,10 @@ main {
     #050505;
 }
 
+.auth-panel[hidden] {
+  display: none !important;
+}
+
 .auth-card {
   width: min(520px, 100%);
   border: 1px solid rgba(255, 255, 255, 0.16);

@@ -84,3 +84,10 @@ test("auth panel keeps a dark readable background without relying on body state"
   assert.match(authPanelBlock, /#050505/);
   assert.match(authCardBlock, /rgba\(10,\s*10,\s*12,\s*0\.78\)/);
 });
+
+test("auth panel hidden attribute overrides its grid display", async () => {
+  const source = await read("../static/styles.css");
+  const hiddenAuthPanelBlock = source.match(/\.auth-panel\[hidden\]\s*\{[^}]+\}/)?.[0] || "";
+
+  assert.match(hiddenAuthPanelBlock, /display:\s*none\s*!important/);
+});
