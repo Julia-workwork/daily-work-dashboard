@@ -49,9 +49,12 @@ test("browser source contains required Action Zine English labels", async () => 
     "Monthly Report",
     "Leadership Weekly Report",
     "Source records remain read-only",
-    "本周完成",
-    "量化产出",
-    "下周计划",
+    "Product Line",
+    "Brand",
+    "IMC",
+    "Julia’s Initiative",
+    "Next Moves",
+    "[TBD]",
     "View all tasks",
     "Open draft",
     "Syncing work records...",
@@ -100,4 +103,16 @@ test("weekly report renders one selected week with a week filter", async () => {
   assert.match(source, /selectedWeeklyReport/);
   assert.match(renderWeeklyBlock, /weeklyLeadershipCard\(selectedReport/);
   assert.doesNotMatch(renderWeeklyBlock, /monthly\.weeks\.map\(weeklyLeadershipCard\)/);
+});
+
+test("weekly report uses Julia workflow sections instead of generic report buckets", async () => {
+  const source = await read("../static/app.js");
+
+  for (const label of ["Product Line", "Brand", "IMC", "Julia’s Initiative", "Next Moves", "[TBD]"]) {
+    assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+
+  for (const oldLabel of ["量化产出", "跨部门协作", "待协调事项"]) {
+    assert.doesNotMatch(source, new RegExp(oldLabel));
+  }
 });

@@ -159,19 +159,57 @@ function reportQuantity(text) {
   return matches.reduce((total, match) => total + Number(match[1]), 0);
 }
 
-function reportCategories() {
-  return [
-    { label: "内容与素材", keywords: /视频|拍摄|剪辑|内容|社媒|博客|图文|素材|发布|配文|脚本/i },
-    { label: "用户反馈与问题处理", keywords: /用户|反馈|问题|沟通|John|RT\d+|耳机|通信|customer|support/i },
-    { label: "跨部门协作", keywords: /IMC|研发|同步|对齐|协作|客服|负责人|确认|review/i },
-    { label: "数据与表格整理", keywords: /数据|表格|sheet|标签|分类|归类|整理|分析|复盘/i },
-    { label: "文档与流程沉淀", keywords: /文档|周报|说明|流程|草稿|记录|总结|沉淀/i },
-    { label: "产品与运营跟进", keywords: /产品|功能|体验|KOC|KOL|社区|运营|活动|测试/i },
-  ];
-}
-
 function uniqueReportItems(items) {
   return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
+}
+
+function reportTags(text) {
+  return [...String(text).matchAll(/\[([^\]]+)\]/g)].map((match) => match[1].trim().toLowerCase());
+}
+
+function hasReportTag(item, tags) {
+  const itemTags = reportTags(item.text);
+  return tags.some((tag) => itemTags.includes(tag.toLowerCase()));
+}
+
+function displayReportText(text) {
+  return String(text || "")
+    .replace(/\[[^\]]+\]\s*/g, "")
+    .trim();
+}
+
+function itemMatches(item, tags, keywords) {
+  return hasReportTag(item, tags) || keywords.test(item.text);
+}
+
+function reportSection(title, items) {
+  const uniqueItems = uniqueReportItems(items.map((item) => displayReportText(item.text))).slice(0, 6);
+  const total = items.reduce((sum, item) => sum + reportQuantity(item.text), 0);
+  return { title, total, items: uniqueItems };
+}
+
+function workflowSections(items) {
+  const productLine = items.filter((item) =>
+    itemMatches(item, ["Product Line"], /产品|功能|固件|firmware|beta|APRS|Message|HA2|H1|需求|研发|PM|测试|User Issue|用户|问题|RV\d+|RT\d+|LR\d+/i),
+  );
+  const brand = items.filter((item) =>
+    itemMatches(item, ["Brand"], /品牌|社媒|social|post|YouTube|TikTok|blog|博客|图片|素材|活动|展会|KOC|KOL|美工|数据指标|粉丝/i),
+  );
+  const imc = items.filter((item) =>
+    itemMatches(item, ["IMC"], /IMC|汇报|用户标签|标签|洞察|PPT|排期|对齐|传播|文件更新/i),
+  );
+  const julia = items.filter((item) => hasReportTag(item, ["JULIA"]));
+  const nextMoves = items.filter(
+    (item) => hasReportTag(item, ["Plan", "Idea", "TBD"]) || (!item.done && !hasReportTag(item, ["JULIA"])),
+  );
+
+  return [
+    reportSection("Product Line", productLine),
+    reportSection("Brand", brand),
+    reportSection("IMC", imc),
+    reportSection("Julia’s Initiative", julia),
+    reportSection("Next Moves", nextMoves),
+  ];
 }
 
 function latestReportMonth(data) {
@@ -185,12 +223,23 @@ function latestReportMonth(data) {
 function reportItemsForMonth(data, monthKey) {
   const dailyItems = data.dailyExtracts
     .filter((item) => dateMonth(item.date) === monthKey)
-    .map((item) => ({
-      date: item.date,
-      week: weekLabel(item.date),
-      text: reportSourceText(item),
-      type: "daily",
-    }));
+    .flatMap((item) => {
+      const completed = splitText([item.completedWork, item.keyOutputs, item.weeklyReportCandidate].filter(Boolean).join("；")).map((text) => ({
+        date: item.date,
+        week: weekLabel(item.date),
+        text,
+        type: "daily",
+        done: true,
+      }));
+      const open = splitText([item.inProgress, item.followUps, item.risksIssues, item.tomorrowReminders, item.notes].filter(Boolean).join("；")).map((text) => ({
+        date: item.date,
+        week: weekLabel(item.date),
+        text,
+        type: "daily",
+        done: false,
+      }));
+      return [...completed, ...open];
+    });
 
   const taskItems = data.tasks
     .map((task) => {
@@ -208,23 +257,7 @@ function reportItemsForMonth(data, monthKey) {
   return [...dailyItems, ...taskItems].filter((item) => item.text);
 }
 
-function categorySummaryForItems(items) {
-  return reportCategories()
-    .map((category) => {
-      const matches = items.filter((item) => category.keywords.test(item.text));
-      const quantity = matches.reduce((total, item) => total + reportQuantity(item.text), 0);
-      return {
-        ...category,
-        quantity,
-        examples: uniqueReportItems(matches.flatMap((item) => splitText(item.text))).slice(0, 3),
-      };
-    })
-    .filter((category) => category.quantity || category.examples.length);
-}
-
 function leadershipWeekReport(week, items, weekly) {
-  const details = uniqueReportItems(items.flatMap((item) => splitText(item.text))).slice(0, 6);
-  const categories = categorySummaryForItems(items);
   const openFollowUps = uniqueReportItems([
     ...splitText(weekly.continuedFollowUps),
     ...items.filter((item) => !item.done).flatMap((item) => splitText(item.text)),
@@ -234,10 +267,11 @@ function leadershipWeekReport(week, items, weekly) {
     week,
     startDate: items.map((item) => item.date).filter(Boolean).sort()[0] || "",
     total: items.reduce((total, item) => total + reportQuantity(item.text), 0),
-    details,
-    categories,
-    risks: splitText(weekly.risksIssues).slice(0, 4),
-    nextPlan: uniqueReportItems([...splitText(weekly.nextWeekPlan), ...openFollowUps]).slice(0, 4),
+    sections: workflowSections([
+      ...items,
+      ...openFollowUps.map((text) => ({ text: `[TBD] ${text}`, done: false })),
+      ...splitText(weekly.nextWeekPlan).map((text) => ({ text: `[Plan] ${text}`, done: false })),
+    ]),
   };
 }
 
@@ -574,24 +608,20 @@ function weeklyBlock(title, value) {
   `;
 }
 
-function quantifiedLine(category) {
-  const example = category.examples[0] ? `，例如：${category.examples[0]}` : "";
-  return `<li><strong>${category.label}</strong>：本周形成 ${category.quantity} 项可汇报产出${escapeHtml(example)}。</li>`;
-}
-
 function weeklyLeadershipCard(report, index) {
-  const detailItems = report.details.length
-    ? report.details.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
-    : "<li>本周暂无可汇总记录。</li>";
-  const quantItems = report.categories.length
-    ? report.categories.map(quantifiedLine).join("")
-    : "<li>本周记录较少，建议补充类型、数量和产出说明。</li>";
-  const riskItems = report.risks.length
-    ? report.risks.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
-    : "<li>暂无明确风险记录，建议如有待协调事项可在日记中单独标注。</li>";
-  const planItems = report.nextPlan.length
-    ? report.nextPlan.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
-    : "<li>继续整理本周产出，并补充下周计划。</li>";
+  const sections = report.sections
+    .map((section) => {
+      const list = section.items.length
+        ? section.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
+        : "<li>No tagged records yet.</li>";
+      return `
+        <section>
+          <h3>${escapeHtml(section.title)} <span class="section-count">${section.total}</span></h3>
+          <ul>${list}</ul>
+        </section>
+      `;
+    })
+    .join("");
 
   return `
     <article class="weekly-report-card">
@@ -602,24 +632,9 @@ function weeklyLeadershipCard(report, index) {
         </div>
         <strong>${report.total}</strong>
       </header>
-      <p class="weekly-report-summary">本周基于日常记录整理出 ${report.total} 项可汇报工作内容，覆盖内容产出、用户问题处理、跨部门协作、数据整理与文档沉淀等方向。</p>
+      <p class="weekly-report-summary">This report is organized by Julia’s real workflow: Product Line, Brand, and IMC first, with quantified work embedded in each section. [JULIA], [Plan], [Idea], and [TBD] are separated so personal initiative and pending work stay visible.</p>
       <div class="weekly-report-sections">
-        <section>
-          <h3>本周完成</h3>
-          <ul>${detailItems}</ul>
-        </section>
-        <section>
-          <h3>量化产出</h3>
-          <ul>${quantItems}</ul>
-        </section>
-        <section>
-          <h3>待协调事项</h3>
-          <ul>${riskItems}</ul>
-        </section>
-        <section>
-          <h3>下周计划</h3>
-          <ul>${planItems}</ul>
-        </section>
+        ${sections}
       </div>
     </article>
   `;
