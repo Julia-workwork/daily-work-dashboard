@@ -792,14 +792,37 @@ select {
 }
 
 .monthly-report-note {
-  width: fit-content;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
   max-width: 100%;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 999px;
+  border-radius: 24px;
   background: rgba(255, 255, 255, 0.72);
   color: #687183;
-  padding: 9px 14px;
+  padding: 10px 12px 10px 16px;
   font-size: 13px;
+}
+
+.week-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #1d1d1f;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.week-filter select {
+  min-width: 230px;
+  border: 1px solid rgba(198, 206, 218, 0.7);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #1d1d1f;
+  padding: 10px 14px;
+  font: 650 14px/1 var(--system-font);
 }
 
 .weekly-report-card {
@@ -1017,6 +1040,23 @@ select {
 
   .weekly-report-card {
     padding: 20px;
+  }
+
+  .monthly-report-note {
+    align-items: stretch;
+    flex-direction: column;
+    border-radius: 22px;
+  }
+
+  .week-filter {
+    align-items: stretch;
+    flex-direction: column;
+    white-space: normal;
+  }
+
+  .week-filter select {
+    width: 100%;
+    min-width: 0;
   }
 
   .weekly-report-header {

@@ -91,3 +91,13 @@ test("auth panel hidden attribute overrides its grid display", async () => {
 
   assert.match(hiddenAuthPanelBlock, /display:\s*none\s*!important/);
 });
+
+test("weekly report renders one selected week with a week filter", async () => {
+  const source = await read("../static/app.js");
+  const renderWeeklyBlock = source.match(/function renderWeekly\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /data-week-filter/);
+  assert.match(source, /selectedWeeklyReport/);
+  assert.match(renderWeeklyBlock, /weeklyLeadershipCard\(selectedReport/);
+  assert.doesNotMatch(renderWeeklyBlock, /monthly\.weeks\.map\(weeklyLeadershipCard\)/);
+});

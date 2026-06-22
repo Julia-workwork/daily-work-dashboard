@@ -2,6 +2,7 @@ const state = {
   data: null,
   activeView: "overview",
   localTasks: [],
+  selectedWeek: "",
   filters: {
     priority: "All",
     status: "All",
@@ -231,6 +232,7 @@ function leadershipWeekReport(week, items, weekly) {
 
   return {
     week,
+    startDate: items.map((item) => item.date).filter(Boolean).sort()[0] || "",
     total: items.reduce((total, item) => total + reportQuantity(item.text), 0),
     details,
     categories,
@@ -251,7 +253,7 @@ function monthlyLeadershipReport(data) {
   const weekly = data.weeklyReview || {};
   const weeks = [...grouped.entries()]
     .map(([week, items]) => leadershipWeekReport(week, items, weekly))
-    .sort((left, right) => left.week.localeCompare(right.week, "en"));
+    .sort((left, right) => right.startDate.localeCompare(left.startDate));
 
   return {
     monthKey,
@@ -259,6 +261,32 @@ function monthlyLeadershipReport(data) {
     weeks,
     sourceNote: "Source records remain read-only. This page only filters and summarizes the selected month.",
   };
+}
+
+function selectedWeeklyReport(monthly) {
+  if (!monthly.weeks.length) return null;
+  const selected = monthly.weeks.find((week) => week.week === state.selectedWeek);
+  return selected || monthly.weeks[0];
+}
+
+function weekFilter(monthly, selectedReport) {
+  if (monthly.weeks.length <= 1) return "";
+  return `
+    <label class="week-filter">
+      <span>Report Week</span>
+      <select data-week-filter>
+        ${monthly.weeks
+          .map(
+            (report) => `
+              <option value="${escapeHtml(report.week)}" ${report.week === selectedReport.week ? "selected" : ""}>
+                ${escapeHtml(report.week)}
+              </option>
+            `,
+          )
+          .join("")}
+      </select>
+    </label>
+  `;
 }
 
 function metricCard(label, value, caption, icon, isReview = false) {
@@ -599,20 +627,29 @@ function weeklyLeadershipCard(report, index) {
 
 function renderWeekly(data) {
   const monthly = monthlyLeadershipReport(data);
+  const selectedReport = selectedWeeklyReport(monthly);
   elements.weekly.innerHTML = `
     <section class="page-kicker">
       <p class="eyebrow">Monthly Report</p>
       <h1>${escapeHtml(monthly.title)} work summary.</h1>
     </section>
     <section class="monthly-report-shell">
-      <div class="monthly-report-note">${escapeHtml(monthly.sourceNote)}</div>
+      <div class="monthly-report-note">
+        <span>${escapeHtml(monthly.sourceNote)}</span>
+        ${selectedReport ? weekFilter(monthly, selectedReport) : ""}
+      </div>
       ${
-        monthly.weeks.length
-          ? monthly.weeks.map(weeklyLeadershipCard).join("")
+        selectedReport
+          ? weeklyLeadershipCard(selectedReport, 0)
           : '<article class="weekly-report-card"><h2>No records for this month yet.</h2><p class="muted">Add daily notes with type, action, quantity, and output so the report can summarize them.</p></article>'
       }
     </section>
   `;
+
+  elements.weekly.querySelector("[data-week-filter]")?.addEventListener("change", (event) => {
+    state.selectedWeek = event.target.value;
+    renderWeekly(data);
+  });
 }
 
 function renderSettings(data) {
