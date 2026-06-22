@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Daily Work Command Board</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true">W</span>
+        <span class="brand-name">Daily Work</span>
+      </div>
+
+      <nav class="tabs" aria-label="Dashboard views">
+        <button class="tab is-active" type="button" data-view="overview">Overview</button>
+        <button class="tab" type="button" data-view="tasks">Tasks</button>
+        <button class="tab" type="button" data-view="weekly">Weekly</button>
+        <button class="tab" type="button" data-view="settings">Settings</button>
+      </nav>
+
+      <div class="topbar-actions">
+        <p id="source-line" class="sync-pill">Syncing work records...</p>
+        <button class="icon-button" id="refresh-button" type="button" title="Refresh data" aria-label="Refresh data">
+          <span aria-hidden="true">↻</span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section id="auth-panel" class="auth-panel" hidden>
+        <form id="auth-form" class="auth-card">
+          <p class="eyebrow">Private Access</p>
+          <h1>Daily Work</h1>
+          <p>Enter your dashboard password to unlock your private workflow system.</p>
+          <label>
+            <span>Password</span>
+            <input id="auth-password" name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="text-action primary-action" type="submit">Unlock Dashboard</button>
+          <p id="auth-message" class="auth-message"></p>
+        </form>
+      </section>
+      <section id="state-panel" class="state-panel">Syncing work records...</section>
+      <section id="overview-view" class="view is-active"></section>
+      <section id="tasks-view" class="view"></section>
+      <section id="weekly-view" class="view"></section>
+      <section id="settings-view" class="view"></section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
