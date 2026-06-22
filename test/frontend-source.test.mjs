@@ -75,3 +75,12 @@ test("task and weekly hero sections are centered", async () => {
   assert.match(pageKickerBlock, /text-align:\s*center/);
   assert.match(pageKickerBlock, /justify-items:\s*center/);
 });
+
+test("auth panel keeps a dark readable background without relying on body state", async () => {
+  const source = await read("../static/styles.css");
+  const authPanelBlock = source.match(/\.auth-panel\s*\{[^}]+\}/)?.[0] || "";
+  const authCardBlock = source.match(/\.auth-card\s*\{[^}]+\}/)?.[0] || "";
+
+  assert.match(authPanelBlock, /#050505/);
+  assert.match(authCardBlock, /rgba\(10,\s*10,\s*12,\s*0\.78\)/);
+});

@@ -191,13 +191,18 @@ main {
   display: grid;
   place-items: center;
   padding: 40px 20px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.18), transparent 30%),
+    #050505;
 }
 
 .auth-card {
   width: min(520px, 100%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 32px;
-  background: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04)),
+    rgba(10, 10, 12, 0.78);
   color: white;
   box-shadow: 0 34px 120px rgba(0, 0, 0, 0.36);
   backdrop-filter: blur(34px);
