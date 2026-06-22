@@ -10,7 +10,7 @@ import { createNotionTask as createTaskInNotion } from "./lib/notion-tasks.mjs";
 const root = fileURLToPath(new URL(".", import.meta.url));
 const staticRoot = join(root, "static");
 const port = Number(process.env.PORT || 5175);
-const host = process.env.HOST || "127.0.0.1";
+const host = resolveListenHost(process.env);
 const DEFAULT_NOTION_TASKS_DATA_SOURCE_ID = "386cbc99-c1ab-8042-a401-000bc1689dd9";
 
 const mimeTypes = {
@@ -202,6 +202,12 @@ export function createAppServer(options = {}) {
       });
     }
   });
+}
+
+export function resolveListenHost(env = process.env) {
+  if (env.HOST) return env.HOST;
+  if (env.RENDER || env.NODE_ENV === "production") return "0.0.0.0";
+  return "127.0.0.1";
 }
 
 export function isDirectRun(moduleUrl, argvPath) {

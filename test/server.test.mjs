@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { createAppServer, isDirectRun } from "../server.mjs";
+import { createAppServer, resolveListenHost, isDirectRun } from "../server.mjs";
 
 function request(server, url, options = {}) {
   const req = new EventEmitter();
@@ -182,6 +182,13 @@ test("isDirectRun handles file paths with spaces", () => {
     isDirectRun("file:///Users/Zhuanz/Documents/New%20project/daily-work-dashboard/server.mjs", "/Users/Zhuanz/Documents/New project/daily-work-dashboard/server.mjs"),
     true,
   );
+});
+
+test("resolveListenHost binds production deployments to all interfaces", () => {
+  assert.equal(resolveListenHost({ RENDER: "true" }), "0.0.0.0");
+  assert.equal(resolveListenHost({ NODE_ENV: "production" }), "0.0.0.0");
+  assert.equal(resolveListenHost({ HOST: "127.0.0.1", RENDER: "true" }), "127.0.0.1");
+  assert.equal(resolveListenHost({}), "127.0.0.1");
 });
 
 test("static file serving maps root to index.html", async () => {
