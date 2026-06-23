@@ -39,7 +39,7 @@ test("GET /api/workflow returns dashboard JSON", async () => {
   const server = createAppServer({
     fetchTabs: async () => ({
       dailyExtracts: [["Date"], ["2026-06-17"]],
-      tasks: [["Task Name", "Priority", "Status"], ["A", "P1", "In Progress"]],
+      tasks: [["Task Name", "Priority", "Status", "Due Date"], ["A", "P1", "In Progress", "2026-06-17"]],
       weeklyReview: [["Week Range", "Draft Weekly Report"], ["2026.06.15-2026.06.18", "周报"]],
       categorySummary: [["Category", "Open Tasks"], ["Content Publishing", "1"]],
       settings: [["Type", "Value"], ["Priority", "P1"]],
@@ -209,6 +209,63 @@ test("POST /api/notion/tasks creates a Notion task through configured writer", a
   assert.equal(calls[0].token, "secret-token");
   assert.equal(calls[0].dataSourceId, "collection://abc123");
   assert.equal(calls[0].task.taskName, "剪辑 H1 Call Log 视频");
+});
+
+test("PATCH /api/notion/tasks updates an existing Workflow Tasks row", async () => {
+  const calls = [];
+  const server = createAppServer({
+    notionToken: "secret-token",
+    updateNotionTask: async (options) => {
+      calls.push(options);
+      return { url: "https://notion.so/task-row" };
+    },
+  });
+
+  const response = await request(server, "/api/notion/tasks", {
+    method: "PATCH",
+    body: JSON.stringify({
+      sourceId: "task-page-id",
+      taskName: "Updated task",
+      status: "Done",
+      priority: "P1",
+      category: "Product",
+      dueDate: "2026-06-22",
+      nextAction: "Done",
+      needsReview: false,
+    }),
+  });
+  const payload = response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(calls[0].pageId, "task-page-id");
+  assert.equal(calls[0].task.taskName, "Updated task");
+});
+
+test("PATCH /api/notion/daily-work updates an editable Daily Work source record", async () => {
+  const calls = [];
+  const server = createAppServer({
+    notionToken: "secret-token",
+    updateDailyWorkTodo: async (options) => {
+      calls.push(options);
+      return { id: "todo-block" };
+    },
+  });
+
+  const response = await request(server, "/api/notion/daily-work", {
+    method: "PATCH",
+    body: JSON.stringify({
+      sourceId: "todo-block",
+      taskName: "[PL] Updated daily item",
+      status: "Done",
+    }),
+  });
+  const payload = response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(calls[0].blockId, "todo-block");
+  assert.equal(calls[0].task.taskName, "[PL] Updated daily item");
 });
 
 test("isDirectRun handles file paths with spaces", () => {

@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  fetchDailyWorkBlocks,
   fetchNotionTasks,
   notionWorkflowSource,
   parseDailyWorkMarkdown,
+  updateDailyWorkTodo,
 } from "../lib/notion-workflow.mjs";
 
 const DAILY_MARKDOWN = `
@@ -75,6 +77,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
           json: async () => ({
             results: [
               {
+                id: "task-page-id",
                 url: "https://notion.so/task",
                 properties: {
                   "Task Name": { title: [{ plain_text: "Follow up John" }] },
@@ -96,9 +99,102 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
   assert.equal(requests[0].url, "https://api.notion.com/v1/data_sources/abc123/query");
   assert.equal(requests[0].options.method, "POST");
   assert.equal(tasks[0].taskName, "Follow up John");
+  assert.equal(tasks[0].sourceId, "task-page-id");
+  assert.equal(tasks[0].sourceType, "workflow-task");
   assert.equal(tasks[0].status, "In Progress");
   assert.equal(tasks[0].needsReview, true);
   assert.equal(tasks[0].notionLink, "https://notion.so/task");
+});
+
+test("fetchDailyWorkBlocks maps Notion todo blocks into editable daily source tasks", async () => {
+  const source = await fetchDailyWorkBlocks(
+    {
+      token: "secret",
+      pageId: "daily-page",
+      today: "2026-06-22",
+    },
+    {
+      fetchImpl: async (url) => {
+        if (url === "https://api.notion.com/v1/blocks/daily-page/children?page_size=100") {
+          return {
+            ok: true,
+            json: async () => ({
+              results: [
+                {
+                  id: "week-block",
+                  type: "heading_1",
+                  has_children: true,
+                  heading_1: { rich_text: [{ plain_text: "2026.06.22-2026.06.27" }] },
+                },
+              ],
+            }),
+          };
+        }
+        if (url === "https://api.notion.com/v1/blocks/week-block/children?page_size=100") {
+          return {
+            ok: true,
+            json: async () => ({
+              results: [
+                {
+                  id: "day-block",
+                  type: "heading_2",
+                  has_children: true,
+                  heading_2: { rich_text: [{ plain_text: "Monday" }] },
+                },
+              ],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            results: [
+              {
+                id: "todo-block",
+                type: "to_do",
+                has_children: false,
+                to_do: { checked: false, rich_text: [{ plain_text: "[PL][TBD] Message 白底图拍摄" }] },
+              },
+            ],
+          }),
+        };
+      },
+    },
+  );
+
+  assert.equal(source.tasks[1][0], "[PL][TBD] Message 白底图拍摄");
+  assert.equal(source.tasks[1][10], "todo-block");
+  assert.equal(source.tasks[1][11], "daily-work");
+});
+
+test("updateDailyWorkTodo patches the source Notion todo block", async () => {
+  const calls = [];
+  const result = await updateDailyWorkTodo(
+    {
+      token: "secret",
+      blockId: "todo-block",
+      task: {
+        taskName: "[PL] Message 白底图拍摄完成",
+        status: "Done",
+      },
+    },
+    {
+      fetchImpl: async (url, options) => {
+        calls.push({ url, options });
+        return {
+          ok: true,
+          json: async () => ({ id: "todo-block" }),
+        };
+      },
+    },
+  );
+
+  assert.equal(result.id, "todo-block");
+  assert.equal(calls[0].url, "https://api.notion.com/v1/blocks/todo-block");
+  assert.equal(calls[0].options.method, "PATCH");
+  const body = JSON.parse(calls[0].options.body);
+  assert.equal(body.to_do.checked, true);
+  assert.equal(body.to_do.rich_text[0].text.content, "[PL] Message 白底图拍摄完成");
 });
 
 test("notionWorkflowSource reads Daily Work markdown and Workflow Tasks from Notion", async () => {
@@ -132,6 +228,7 @@ test("notionWorkflowSource reads Daily Work markdown and Workflow Tasks from Not
   assert.equal(source.dailyExtracts[1][0], "2026-06-22");
   assert.equal(source.weeklyReview.at(-1)[0], "2026.06.22-2026.06.27");
   assert.deepEqual(requests, [
+    "https://api.notion.com/v1/blocks/daily-page/children?page_size=100",
     "https://api.notion.com/v1/pages/daily-page/markdown",
     "https://api.notion.com/v1/data_sources/tasks-source/query",
   ]);

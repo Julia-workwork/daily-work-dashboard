@@ -31,19 +31,19 @@ test("normalizeDate handles Google serial numbers and date strings", () => {
   assert.equal(normalizeDate(""), "");
 });
 
-test("buildTodayFocus includes urgent, waiting, and review tasks", () => {
+test("buildTodayFocus includes this week, overdue, and review tasks", () => {
   const tasks = [
-    { taskName: "P1 open", priority: "P1", status: "In Progress", dueDate: "2026-06-20", needsReview: false },
+    { taskName: "This week p2", priority: "P2", status: "In Progress", dueDate: "2026-06-20", needsReview: false },
     { taskName: "Overdue", priority: "P2", status: "Not Started", dueDate: "2026-06-16", needsReview: false },
-    { taskName: "Due today", priority: "P3", status: "Not Started", dueDate: "2026-06-17", needsReview: false },
-    { taskName: "Waiting", priority: "P2", status: "Waiting on Others", dueDate: "", needsReview: false },
+    { taskName: "This week source", priority: "P3", status: "Not Started", dueDate: "", sourceDate: "2026-06-19", needsReview: false },
     { taskName: "Review flag", priority: "P2", status: "Not Started", dueDate: "", needsReview: true },
+    { taskName: "Future p1", priority: "P1", status: "In Progress", dueDate: "2026-07-01", needsReview: false },
     { taskName: "Done p1", priority: "P1", status: "Done", dueDate: "2026-06-17", needsReview: true },
   ];
 
   assert.deepEqual(
     buildTodayFocus(tasks, "2026-06-17").map((task) => task.taskName),
-    ["P1 open", "Overdue", "Due today", "Waiting", "Review flag"],
+    ["Overdue", "This week p2", "Review flag", "This week source"],
   );
 });
 

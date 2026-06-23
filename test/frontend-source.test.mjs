@@ -39,16 +39,20 @@ test("browser source contains required Action Zine English labels", async () => 
     "Julia's Workflow System",
     "Daily Work",
     "Command Center",
-    "Today's Focus",
+    "Focus Items",
     "Latest Notes",
     "Weekly Draft",
+    "Workload Estimate",
+    "Records",
+    "Quantified Output",
+    "Edit Task",
     "New Task",
     "Save to Notion",
     "Saved to Workflow Tasks",
     "Kept as local draft",
     "Monthly Report",
     "Leadership Weekly Report",
-    "Source records remain read-only",
+    "Daily Work todo records and Workflow Tasks rows can be edited",
     "Product Line",
     "Brand",
     "IMC",
@@ -162,4 +166,24 @@ test("monthly recap shows every concrete item in collapsible lists", async () =>
   assert.match(monthlyRecapBlock, /<li>\$\{escapeHtml\(item\)\}<\/li>/);
   assert.doesNotMatch(monthlyRecapBlock, /section\.items\[0\]/);
   assert.doesNotMatch(source, /weekSections\.flatMap\(\(section\) => section\.items\)\)\.slice\(0,\s*3\)/);
+});
+
+test("frontend supports editing tasks and source records", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /data-edit-task/);
+  assert.match(source, /saveTaskEdit/);
+  assert.match(source, /\/api\/notion\/daily-work/);
+  assert.match(source, /\/api\/notion\/tasks/);
+  assert.match(source, /name="taskName"/);
+});
+
+test("weekly and monthly reporting exposes quantified output details", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /explicitQuantity/);
+  assert.match(source, /quantifiedItems/);
+  assert.match(source, /Workload Estimate/);
+  assert.match(source, /Records/);
+  assert.match(source, /Quantified Output/);
 });

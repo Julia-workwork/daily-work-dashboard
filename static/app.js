@@ -3,6 +3,7 @@ const state = {
   activeView: "overview",
   localTasks: [],
   selectedWeek: "",
+  visibleTasks: [],
   filters: {
     priority: "All",
     status: "All",
@@ -118,6 +119,19 @@ function taskFromForm(form) {
   };
 }
 
+function taskFromEditForm(form, original = {}) {
+  return {
+    ...original,
+    taskName: String(new FormData(form).get("taskName") || "").trim(),
+    nextAction: String(new FormData(form).get("nextAction") || "").trim(),
+    category: String(new FormData(form).get("category") || "").trim() || "Other",
+    priority: String(new FormData(form).get("priority") || "P2"),
+    status: String(new FormData(form).get("status") || "Not Started"),
+    dueDate: String(new FormData(form).get("dueDate") || ""),
+    needsReview: new FormData(form).get("needsReview") === "on",
+  };
+}
+
 function priorityClass(priority) {
   const classes = {
     P1: "priority-p1",
@@ -150,6 +164,14 @@ function taskStatusChips(task) {
   if (task.dueDate) chips.push(chip(task.dueDate, task.dueDate === todayIso() ? "due-today" : "due-date"));
   if (task.needsReview) chips.push(chip("Review", "status-review"));
   return chips.join("");
+}
+
+function taskKey(task) {
+  return encodeURIComponent([task.sourceType, task.sourceId, task.taskName, task.dueDate].filter(Boolean).join("|"));
+}
+
+function findTaskByKey(data, key) {
+  return allTasks(data).find((task) => taskKey(task) === key);
 }
 
 function dateMonth(value) {
@@ -198,6 +220,11 @@ function reportQuantity(text) {
   return matches.reduce((total, match) => total + Number(match[1]), 0);
 }
 
+function explicitQuantity(text) {
+  const matches = [...String(text).matchAll(/(\d+)\s*(条|份|次|个|版|项|篇|张|posts?|videos?|issues?|tasks?|files?)/gi)];
+  return matches.reduce((total, match) => total + Number(match[1]), 0);
+}
+
 function uniqueReportItems(items) {
   return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
 }
@@ -236,8 +263,19 @@ function itemMatches(item, tags, keywords) {
 
 function reportSection(title, items) {
   const uniqueItems = uniqueReportItems(items.map((item) => displayReportText(item.text))).slice(0, 6);
-  const total = items.reduce((sum, item) => sum + reportQuantity(item.text), 0);
-  return { title, total, items: uniqueItems };
+  const quantifiedItems = uniqueReportItems(
+    items
+      .filter((item) => explicitQuantity(item.text) > 0)
+      .map((item) => `${displayReportText(item.text)} (${explicitQuantity(item.text)})`),
+  );
+  return {
+    title,
+    total: items.reduce((sum, item) => sum + reportQuantity(item.text), 0),
+    records: items.length,
+    quantifiedOutput: items.reduce((sum, item) => sum + explicitQuantity(item.text), 0),
+    quantifiedItems,
+    items: uniqueItems,
+  };
 }
 
 function workflowSections(items) {
@@ -294,6 +332,7 @@ function reportItemsForMonth(data, monthKey) {
     });
 
   const taskItems = data.tasks
+    .filter((task) => task.sourceType !== "daily-work")
     .map((task) => {
       const date = task.sourceDate || task.completedDate || task.dueDate;
       return {
@@ -319,6 +358,13 @@ function leadershipWeekReport(week, items, weekly) {
     week,
     startDate: items.map((item) => item.date).filter(Boolean).sort()[0] || "",
     total: items.reduce((total, item) => total + reportQuantity(item.text), 0),
+    records: items.length,
+    quantifiedOutput: items.reduce((total, item) => total + explicitQuantity(item.text), 0),
+    quantifiedItems: uniqueReportItems(
+      items
+        .filter((item) => explicitQuantity(item.text) > 0)
+        .map((item) => `${displayReportText(item.text)} (${explicitQuantity(item.text)})`),
+    ),
     sections: workflowSections([
       ...items,
       ...openFollowUps.map((text) => ({ text: `[TBD] ${text}`, done: false })),
@@ -346,7 +392,7 @@ function monthlyLeadershipReport(data) {
     title: monthTitle(monthKey),
     weeks,
     recap: monthlyRecap(weeks),
-    sourceNote: "Source records remain read-only. This page only filters and summarizes the selected month.",
+    sourceNote: "Daily Work todo records and Workflow Tasks rows can be edited from the Tasks view.",
   };
 }
 
@@ -357,12 +403,18 @@ function monthlyRecap(weeks) {
     return {
       title: name,
       total: weekSections.reduce((sum, section) => sum + section.total, 0),
+      records: weekSections.reduce((sum, section) => sum + section.records, 0),
+      quantifiedOutput: weekSections.reduce((sum, section) => sum + section.quantifiedOutput, 0),
+      quantifiedItems: uniqueReportItems(weekSections.flatMap((section) => section.quantifiedItems)),
       items: uniqueReportItems(weekSections.flatMap((section) => section.items)),
     };
   });
   return {
     weekCount: weeks.length,
     total: weeks.reduce((sum, week) => sum + week.total, 0),
+    records: weeks.reduce((sum, week) => sum + week.records, 0),
+    quantifiedOutput: weeks.reduce((sum, week) => sum + week.quantifiedOutput, 0),
+    quantifiedItems: uniqueReportItems(weeks.flatMap((week) => week.quantifiedItems)),
     sections,
   };
 }
@@ -427,7 +479,37 @@ function taskRow(task, index) {
         <p>${escapeHtml(task.nextAction || task.category || "Confirm next action")}</p>
       </div>
       <div class="focus-stamps">${taskStatusChips(task)}</div>
+      <button class="text-action row-edit-action" type="button" data-edit-task="${taskKey(task)}">Edit</button>
     </article>
+  `;
+}
+
+function overviewWeeklyDraft(report) {
+  if (!report) return '<p class="muted">No weekly draft captured yet.</p>';
+  const sections = report.sections
+    .filter((section) => section.items.length)
+    .map(
+      (section) => `
+        <section class="draft-summary-section">
+          <h4>${escapeHtml(section.title)}</h4>
+          <ul>${section.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </section>
+      `,
+    )
+    .join("");
+  const quantified = report.quantifiedItems.length
+    ? `<section class="draft-summary-section"><h4>Quantified Output</h4><ul>${report.quantifiedItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>`
+    : "";
+  return `
+    <div class="draft-summary">
+      <div class="draft-summary-metrics">
+        <span>Workload Estimate <strong>${report.total}</strong></span>
+        <span>Records <strong>${report.records}</strong></span>
+        <span>Quantified Output <strong>${report.quantifiedOutput}</strong></span>
+      </div>
+      ${sections}
+      ${quantified}
+    </div>
   `;
 }
 
@@ -436,11 +518,13 @@ function renderOverview(data) {
   const reviewTasks = countBy(data.tasks, (task) => task.needsReview || String(task.status).includes("Review"));
   const latestDaily = data.dailyExtracts[data.dailyExtracts.length - 1] || {};
   const focusTasks = data.todayFocus.slice(0, 3);
+  const monthly = monthlyLeadershipReport(data);
+  const selectedReport = selectedWeeklyReport(monthly);
 
   elements.overview.innerHTML = `
     ${actionHero()}
     <section class="metric-grid">
-      ${metricCard("Today's Focus", data.todayFocus.length, "High impact today", "◎")}
+      ${metricCard("Focus Items", data.todayFocus.length, "This week, overdue, review", "◎")}
       ${metricCard("Open Tasks", openTasks, "In progress", "☷")}
       ${metricCard("Needs Review", reviewTasks, "Check these first", "!", true)}
       ${metricCard("Weekly Draft", data.weeklyReview.weekRange ? 1 : 0, "Ready to refine", "✓")}
@@ -470,8 +554,8 @@ function renderOverview(data) {
             <h2><span>Weekly Draft</span></h2>
             <button class="text-action" type="button" data-jump-view="weekly">Open draft</button>
           </div>
-          <h3>${escapeHtml(data.weeklyReview.weekRange || "Current week")}</h3>
-          <p>${escapeHtml(data.weeklyReview.draftWeeklyReport || "No weekly draft captured yet.")}</p>
+          <h3>${escapeHtml(selectedReport?.week || data.weeklyReview.weekRange || "Current week")}</h3>
+          ${overviewWeeklyDraft(selectedReport)}
           <div class="progress-line" aria-hidden="true"><span></span></div>
         </article>
       </aside>
@@ -479,6 +563,7 @@ function renderOverview(data) {
   `;
 
   bindJumpButtons();
+  bindEditTaskButtons(data);
 }
 
 function filterSelect(label, key, values) {
@@ -505,9 +590,9 @@ function filteredTasks(data) {
 
 function taskTable(tasks) {
   return `
-    <div class="table-panel">
+      <div class="table-panel">
       <div class="table-row table-head">
-        <span>Task</span><span>Category</span><span>Priority</span><span>Status</span><span>Due</span><span>Next Action</span>
+        <span>Task</span><span>Category</span><span>Priority</span><span>Status</span><span>Due</span><span>Next Action</span><span>Edit</span>
       </div>
       ${
         tasks.length
@@ -521,6 +606,7 @@ function taskTable(tasks) {
                     <span>${chip(task.status, statusClass(task.status))}</span>
                     <span>${escapeHtml(task.dueDate || "—")}</span>
                     <span>${escapeHtml(task.nextAction || "—")}</span>
+                    <span><button class="text-action compact-action" type="button" data-edit-task="${taskKey(task)}">Edit</button></span>
                   </div>
                 `,
               )
@@ -542,7 +628,7 @@ function taskForm(data) {
           </div>
           <button class="icon-button dialog-close" type="button" data-close-task aria-label="Close new task form">×</button>
         </div>
-        <p class="task-form-note">Save a new task to the Workflow Tasks Notion database. Daily Work source records remain read-only.</p>
+        <p class="task-form-note">Save a new task to the Workflow Tasks Notion database. Existing Daily Work todo records can be edited from the task list.</p>
         <label>
           <span>Task Name</span>
           <input name="taskName" required placeholder="What needs to be done?" />
@@ -590,6 +676,67 @@ function taskForm(data) {
   `;
 }
 
+function taskEditForm(data) {
+  return `
+    <dialog class="task-dialog" id="task-edit-dialog">
+      <form method="dialog" class="task-form" id="task-edit-form">
+        <div class="task-form-header">
+          <div>
+            <p>Editable record</p>
+            <h2>Edit Task</h2>
+          </div>
+          <button class="icon-button dialog-close" type="button" data-close-edit-task aria-label="Close edit task form">×</button>
+        </div>
+        <p class="task-form-note" data-edit-source-note>Update this item in Notion.</p>
+        <input name="sourceId" type="hidden" />
+        <input name="sourceType" type="hidden" />
+        <label>
+          <span>Task Name</span>
+          <textarea name="taskName" rows="3" required></textarea>
+        </label>
+        <label>
+          <span>Next Action</span>
+          <textarea name="nextAction" rows="3"></textarea>
+        </label>
+        <div class="task-form-grid">
+          <label>
+            <span>Category</span>
+            <input name="category" list="edit-category-options" />
+          </label>
+          <label>
+            <span>Due Date</span>
+            <input name="dueDate" type="date" />
+          </label>
+          <label>
+            <span>Priority</span>
+            <select name="priority">
+              ${unique([...data.tasks.map((task) => task.priority), "P1", "P2", "P3"]).map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}
+            </select>
+          </label>
+          <label>
+            <span>Status</span>
+            <select name="status">
+              ${unique([...data.tasks.map((task) => task.status), "Not Started", "In Progress", "Waiting on Others", "Done"]).map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+        <label class="task-form-check">
+          <input name="needsReview" type="checkbox" />
+          <span>Needs review</span>
+        </label>
+        <datalist id="edit-category-options">
+          ${unique([...DEFAULT_TASK_CATEGORIES, ...data.tasks.map((task) => task.category)]).map((value) => `<option value="${escapeHtml(value)}"></option>`).join("")}
+        </datalist>
+        <div class="task-form-actions">
+          <button class="text-action" type="button" data-close-edit-task>Cancel</button>
+          <button class="text-action primary-action" type="submit">Save changes</button>
+        </div>
+        <p class="task-save-status" data-edit-save-status></p>
+      </form>
+    </dialog>
+  `;
+}
+
 async function saveTaskToNotion(task) {
   const response = await fetch("/api/notion/tasks", {
     method: "POST",
@@ -601,6 +748,87 @@ async function saveTaskToNotion(task) {
     throw new Error(payload.error || "Could not save task to Notion.");
   }
   return payload;
+}
+
+async function saveTaskEdit(task) {
+  const endpoint = task.sourceType === "daily-work" ? "/api/notion/daily-work" : "/api/notion/tasks";
+  const response = await fetch(endpoint, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(task),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || "Could not update this item in Notion.");
+  }
+  return payload;
+}
+
+function replaceTaskInState(data, updatedTask) {
+  const replace = (task) => (taskKey(task) === taskKey(updatedTask) || (task.sourceId && task.sourceId === updatedTask.sourceId) ? { ...task, ...updatedTask } : task);
+  data.tasks = data.tasks.map(replace);
+  state.localTasks = state.localTasks.map(replace);
+}
+
+function fillTaskEditForm(form, task) {
+  form.elements.sourceId.value = task.sourceId || "";
+  form.elements.sourceType.value = task.sourceType || "";
+  form.elements.taskName.value = task.taskName || "";
+  form.elements.nextAction.value = task.nextAction || "";
+  form.elements.category.value = task.category || "Other";
+  form.elements.dueDate.value = task.dueDate || "";
+  form.elements.priority.value = task.priority || "P2";
+  form.elements.status.value = task.status || "Not Started";
+  form.elements.needsReview.checked = Boolean(task.needsReview);
+}
+
+function bindEditTaskButtons(data) {
+  document.querySelectorAll("[data-edit-task]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const task = findTaskByKey(data, button.dataset.editTask);
+      const dialog = document.querySelector("#task-edit-dialog");
+      const form = document.querySelector("#task-edit-form");
+      const note = document.querySelector("[data-edit-source-note]");
+      if (!task || !dialog || !form) return;
+      form.dataset.taskKey = taskKey(task);
+      fillTaskEditForm(form, task);
+      if (note) {
+        note.textContent =
+          task.sourceType === "daily-work"
+            ? "This edits the original Daily Work todo block in Notion."
+            : "This edits the Workflow Tasks database row in Notion.";
+      }
+      dialog.showModal();
+    });
+  });
+}
+
+function bindTaskEditor(data) {
+  const dialog = document.querySelector("#task-edit-dialog");
+  const form = document.querySelector("#task-edit-form");
+  const status = document.querySelector("[data-edit-save-status]");
+  document.querySelectorAll("[data-close-edit-task]").forEach((button) => {
+    button.addEventListener("click", () => dialog?.close());
+  });
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const original = findTaskByKey(data, form.dataset.taskKey) || {};
+    const task = taskFromEditForm(form, original);
+    const submit = form.querySelector("button[type=submit]");
+    submit.disabled = true;
+    if (status) status.textContent = "Saving changes to Notion...";
+    try {
+      await saveTaskEdit(task);
+      replaceTaskInState(data, task);
+      if (status) status.textContent = "Saved.";
+      dialog?.close();
+      render();
+    } catch (error) {
+      if (status) status.textContent = error instanceof Error ? error.message : "Notion update failed.";
+    } finally {
+      submit.disabled = false;
+    }
+  });
 }
 
 function bindTaskCreator(data) {
@@ -642,6 +870,7 @@ function bindTaskCreator(data) {
 function renderTasks(data) {
   const tasks = filteredTasks(data);
   const taskPool = allTasks(data);
+  state.visibleTasks = tasks;
   elements.tasks.innerHTML = `
     <section class="page-kicker">
       <p class="eyebrow">Task Board</p>
@@ -657,6 +886,7 @@ function renderTasks(data) {
     </section>
     <article class="zine-panel">${taskTable(tasks)}</article>
     ${taskForm(data)}
+    ${taskEditForm(data)}
   `;
 
   elements.tasks.querySelectorAll("select").forEach((select) => {
@@ -667,6 +897,8 @@ function renderTasks(data) {
     });
   });
   bindTaskCreator(data);
+  bindTaskEditor(data);
+  bindEditTaskButtons(data);
 }
 
 function weeklyBlock(title, value) {
@@ -700,9 +932,18 @@ function weeklyLeadershipCard(report, index) {
           <p>Leadership Weekly Report</p>
           <h2>${escapeHtml(report.week || `Week ${index + 1}`)}</h2>
         </div>
-        <strong>${report.total}</strong>
+        <strong><span>Workload Estimate</span>${report.total}</strong>
       </header>
+      <div class="report-metric-row">
+        <span>Records <strong>${report.records}</strong></span>
+        <span>Quantified Output <strong>${report.quantifiedOutput}</strong></span>
+      </div>
       <p class="weekly-report-summary">This report is organized by Julia’s real workflow: Product Line, Brand, and IMC first, with quantified work embedded in each section. [JULIA], [Plan], [Idea], and [TBD] are separated so personal initiative and pending work stay visible.</p>
+      ${
+        report.quantifiedItems.length
+          ? `<section class="quantified-output-block"><h3>Quantified Output Details</h3><ul>${report.quantifiedItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>`
+          : ""
+      }
       <div class="weekly-report-sections">
         ${sections}
       </div>
@@ -711,7 +952,7 @@ function weeklyLeadershipCard(report, index) {
 }
 
 function monthlyRecapCard(monthly) {
-  const recap = monthly.recap || { weekCount: 0, total: 0, sections: [] };
+  const recap = monthly.recap || { weekCount: 0, total: 0, records: 0, quantifiedOutput: 0, quantifiedItems: [], sections: [] };
   const sections = recap.sections
     .map((section) => {
       const items = section.items.length
@@ -723,7 +964,16 @@ function monthlyRecapCard(monthly) {
             <span>${escapeHtml(section.title)}</span>
             <strong>${section.total}</strong>
           </summary>
+          <div class="monthly-section-metrics">
+            <span>Records ${section.records}</span>
+            <span>Quantified Output ${section.quantifiedOutput}</span>
+          </div>
           <ul class="monthly-recap-list">${items}</ul>
+          ${
+            section.quantifiedItems?.length
+              ? `<h4>Quantified Output Details</h4><ul class="monthly-recap-list">${section.quantifiedItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+              : ""
+          }
         </details>
       `;
     })
@@ -736,9 +986,18 @@ function monthlyRecapCard(monthly) {
           <p>Monthly Recap</p>
           <h2>${escapeHtml(monthly.title)}</h2>
         </div>
-        <strong>${recap.total}</strong>
+        <strong><span>Workload Estimate</span>${recap.total}</strong>
       </header>
+      <div class="report-metric-row">
+        <span>Records <strong>${recap.records}</strong></span>
+        <span>Quantified Output <strong>${recap.quantifiedOutput}</strong></span>
+      </div>
       <p class="weekly-report-summary">This month includes ${recap.weekCount} tracked week${recap.weekCount === 1 ? "" : "s"}. The recap aggregates Product Line, Brand, IMC, Julia’s Initiative, and Next Moves from your Notion records.</p>
+      ${
+        recap.quantifiedItems.length
+          ? `<section class="quantified-output-block"><h3>Quantified Output Details</h3><ul>${recap.quantifiedItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>`
+          : ""
+      }
       <div class="monthly-recap-grid">${sections}</div>
     </article>
   `;

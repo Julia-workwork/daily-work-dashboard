@@ -5,8 +5,8 @@ import { extname, join, normalize, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildDashboard, DEFAULT_SPREADSHEET_ID } from "./lib/workflow-domain.mjs";
 import { fetchWorkflowTabs, workflowSource } from "./lib/google-sheets.mjs";
-import { createNotionTask as createTaskInNotion } from "./lib/notion-tasks.mjs";
-import { notionWorkflowSource } from "./lib/notion-workflow.mjs";
+import { createNotionTask as createTaskInNotion, updateNotionTask as updateTaskInNotion } from "./lib/notion-tasks.mjs";
+import { notionWorkflowSource, updateDailyWorkTodo as updateDailyTodoInNotion } from "./lib/notion-workflow.mjs";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const staticRoot = join(root, "static");
@@ -119,6 +119,8 @@ export function createAppServer(options = {}) {
   const fetchTabs = options.fetchTabs || fetchWorkflowTabs;
   const fetchNotionSource = options.fetchNotionSource || notionWorkflowSource;
   const createNotionTask = options.createNotionTask || createTaskInNotion;
+  const updateNotionTask = options.updateNotionTask || updateTaskInNotion;
+  const updateDailyWorkTodo = options.updateDailyWorkTodo || updateDailyTodoInNotion;
   const spreadsheetId = options.spreadsheetId || process.env.WORKFLOW_SPREADSHEET_ID || DEFAULT_SPREADSHEET_ID;
   const notionToken = options.notionToken ?? process.env.NOTION_TOKEN ?? process.env.NOTION_API_KEY ?? "";
   const notionDailyWorkPageId =
@@ -186,6 +188,44 @@ export function createAppServer(options = {}) {
         sendJson(res, 201, {
           ok: true,
           notionUrl: result.url,
+          task,
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/notion/tasks" && req.method === "PATCH") {
+        if (!isAuthenticated(req, dashboardPassword)) {
+          sendJson(res, 401, { authRequired: true, error: "Password required" });
+          return;
+        }
+        const task = await readJsonBody(req);
+        const result = await updateNotionTask({
+          token: notionToken,
+          pageId: clean(task.sourceId),
+          task,
+        });
+        sendJson(res, 200, {
+          ok: true,
+          notionUrl: result.url,
+          task,
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/notion/daily-work" && req.method === "PATCH") {
+        if (!isAuthenticated(req, dashboardPassword)) {
+          sendJson(res, 401, { authRequired: true, error: "Password required" });
+          return;
+        }
+        const task = await readJsonBody(req);
+        const result = await updateDailyWorkTodo({
+          token: notionToken,
+          blockId: clean(task.sourceId),
+          task,
+        });
+        sendJson(res, 200, {
+          ok: true,
+          sourceId: result.id,
           task,
         });
         return;
