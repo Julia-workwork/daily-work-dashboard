@@ -55,6 +55,11 @@ test("browser source contains required Action Zine English labels", async () => 
     "Julia’s Initiative",
     "Next Moves",
     "[TBD]",
+    "Tag Guide",
+    "[PL]",
+    "[BR]",
+    "[JL]",
+    "[DA]",
     "View all tasks",
     "Open draft",
     "Syncing work records...",
@@ -115,6 +120,18 @@ test("weekly report uses Julia workflow sections instead of generic report bucke
   for (const oldLabel of ["量化产出", "跨部门协作", "待协调事项"]) {
     assert.doesNotMatch(source, new RegExp(oldLabel));
   }
+});
+
+test("weekly report recognizes short workflow tag aliases", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /WORKFLOW_TAG_GROUPS/);
+  for (const alias of ["PL", "BR", "UI", "CT", "JL", "ID", "PN", "DA", "TBD"]) {
+    assert.match(source, new RegExp(`"${alias}"`));
+  }
+
+  assert.match(source, /workflowTagGuide/);
+  assert.match(source, /Tag Guide/);
 });
 
 test("weekly report strips escaped Notion tags without leaving slashes", async () => {

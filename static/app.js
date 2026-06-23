@@ -27,6 +27,45 @@ const elements = {
 
 const DEFAULT_TASK_CATEGORIES = ["Content", "User Feedback", "Product", "Social", "Data", "Operations", "Meeting", "Other"];
 
+const WORKFLOW_TAG_GROUPS = [
+  {
+    title: "Product Line",
+    tags: ["[PL]", "[UI]"],
+    aliases: ["Product Line", "PL", "User Issue", "UI"],
+    detail: "Product, firmware, beta, user issues",
+  },
+  {
+    title: "Brand",
+    tags: ["[BR]", "[CT]"],
+    aliases: ["Brand", "BR", "Content", "CT"],
+    detail: "Social posts, content, brand operations",
+  },
+  {
+    title: "IMC",
+    tags: ["[IMC]"],
+    aliases: ["IMC"],
+    detail: "Labels, reports, alignment, communication files",
+  },
+  {
+    title: "Julia",
+    tags: ["[JL]"],
+    aliases: ["JULIA", "JL"],
+    detail: "Your own initiatives and planning work",
+  },
+  {
+    title: "Planning",
+    tags: ["[ID]", "[PN]", "[TBD]"],
+    aliases: ["Idea", "ID", "Plan", "PN", "TBD"],
+    detail: "Ideas, plans, and work that should happen next",
+  },
+  {
+    title: "Data",
+    tags: ["[DA]"],
+    aliases: ["Data", "DA"],
+    detail: "Use with [PL], [BR], or [IMC] when the item is data support",
+  },
+];
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -167,9 +206,21 @@ function reportTags(text) {
   return [...String(text).matchAll(/\\?\[([^\]\\]+)\\?\]/g)].map((match) => match[1].trim().toLowerCase());
 }
 
+function tagAliases(tags) {
+  const aliases = new Set(tags.map((tag) => tag.toLowerCase()));
+  for (const group of WORKFLOW_TAG_GROUPS) {
+    const groupAliases = group.aliases.map((tag) => tag.toLowerCase());
+    if (groupAliases.some((tag) => aliases.has(tag))) {
+      groupAliases.forEach((tag) => aliases.add(tag));
+    }
+  }
+  return aliases;
+}
+
 function hasReportTag(item, tags) {
   const itemTags = reportTags(item.text);
-  return tags.some((tag) => itemTags.includes(tag.toLowerCase()));
+  const aliases = tagAliases(tags);
+  return itemTags.some((tag) => aliases.has(tag));
 }
 
 function displayReportText(text) {
@@ -191,10 +242,10 @@ function reportSection(title, items) {
 
 function workflowSections(items) {
   const productLine = items.filter((item) =>
-    itemMatches(item, ["Product Line"], /产品|功能|固件|firmware|beta|APRS|Message|HA2|H1|需求|研发|PM|测试|User Issue|用户|问题|RV\d+|RT\d+|LR\d+/i),
+    itemMatches(item, ["Product Line", "User Issue"], /产品|功能|固件|firmware|beta|APRS|Message|HA2|H1|需求|研发|PM|测试|User Issue|用户|问题|RV\d+|RT\d+|LR\d+/i),
   );
   const brand = items.filter((item) =>
-    itemMatches(item, ["Brand"], /品牌|社媒|social|post|YouTube|TikTok|blog|博客|图片|素材|活动|展会|KOC|KOL|美工|数据指标|粉丝/i),
+    itemMatches(item, ["Brand", "Content"], /品牌|社媒|social|post|YouTube|TikTok|blog|博客|图片|素材|活动|展会|KOC|KOL|美工|数据指标|粉丝/i),
   );
   const imc = items.filter((item) =>
     itemMatches(item, ["IMC"], /IMC|汇报|用户标签|标签|洞察|PPT|排期|对齐|传播|文件更新/i),
@@ -693,6 +744,32 @@ function monthlyRecapCard(monthly) {
   `;
 }
 
+function workflowTagGuide() {
+  const items = WORKFLOW_TAG_GROUPS.map(
+    (group) => `
+      <article class="tag-guide-item">
+        <div>
+          <h3>${escapeHtml(group.title)}</h3>
+          <p>${escapeHtml(group.detail)}</p>
+        </div>
+        <div class="tag-guide-tags">${group.tags.map((tag) => chip(tag)).join("")}</div>
+      </article>
+    `,
+  ).join("");
+
+  return `
+    <article class="tag-guide-card">
+      <header>
+        <div>
+          <p>Tag Guide</p>
+          <h2>Short labels for Notion records.</h2>
+        </div>
+      </header>
+      <div class="tag-guide-grid">${items}</div>
+    </article>
+  `;
+}
+
 function renderWeekly(data) {
   const monthly = monthlyLeadershipReport(data);
   const selectedReport = selectedWeeklyReport(monthly);
@@ -706,6 +783,7 @@ function renderWeekly(data) {
         <span>${escapeHtml(monthly.sourceNote)}</span>
         ${selectedReport ? weekFilter(monthly, selectedReport) : ""}
       </div>
+      ${workflowTagGuide()}
       ${monthlyRecapCard(monthly)}
       ${
         selectedReport
@@ -727,6 +805,9 @@ function renderSettings(data) {
     <section class="page-kicker">
       <p class="eyebrow">Settings</p>
       <h1>System labels.</h1>
+    </section>
+    <section class="settings-tag-guide">
+      ${workflowTagGuide()}
     </section>
     <section class="settings-grid">
       ${Object.entries(groups)
