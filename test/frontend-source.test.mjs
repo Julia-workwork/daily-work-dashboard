@@ -116,3 +116,20 @@ test("weekly report uses Julia workflow sections instead of generic report bucke
     assert.doesNotMatch(source, new RegExp(oldLabel));
   }
 });
+
+test("weekly report strips escaped Notion tags without leaving slashes", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /replace\(\/\\\\\?\\\[[^/]+\\\\\?\\\]\\s\*\/g/);
+  assert.match(source, /replace\(\/\^\\\\\+\/,\s*""\)/);
+});
+
+test("weekly page includes a monthly recap before the selected weekly report", async () => {
+  const source = await read("../static/app.js");
+  const renderWeeklyBlock = source.match(/function renderWeekly\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /monthlyRecapCard/);
+  assert.match(source, /Monthly Recap/);
+  assert.match(renderWeeklyBlock, /monthlyRecapCard\(monthly\)/);
+  assert.match(renderWeeklyBlock, /weeklyLeadershipCard\(selectedReport/);
+});

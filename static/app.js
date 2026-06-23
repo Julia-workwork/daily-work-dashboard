@@ -164,7 +164,7 @@ function uniqueReportItems(items) {
 }
 
 function reportTags(text) {
-  return [...String(text).matchAll(/\[([^\]]+)\]/g)].map((match) => match[1].trim().toLowerCase());
+  return [...String(text).matchAll(/\\?\[([^\]\\]+)\\?\]/g)].map((match) => match[1].trim().toLowerCase());
 }
 
 function hasReportTag(item, tags) {
@@ -174,7 +174,8 @@ function hasReportTag(item, tags) {
 
 function displayReportText(text) {
   return String(text || "")
-    .replace(/\[[^\]]+\]\s*/g, "")
+    .replace(/\\?\[[^\]\\]+\\?\]\s*/g, "")
+    .replace(/^\\+/, "")
     .trim();
 }
 
@@ -293,7 +294,25 @@ function monthlyLeadershipReport(data) {
     monthKey,
     title: monthTitle(monthKey),
     weeks,
+    recap: monthlyRecap(weeks),
     sourceNote: "Source records remain read-only. This page only filters and summarizes the selected month.",
+  };
+}
+
+function monthlyRecap(weeks) {
+  const sectionNames = ["Product Line", "Brand", "IMC", "Julia’s Initiative", "Next Moves"];
+  const sections = sectionNames.map((name) => {
+    const weekSections = weeks.flatMap((week) => week.sections.filter((section) => section.title === name));
+    return {
+      title: name,
+      total: weekSections.reduce((sum, section) => sum + section.total, 0),
+      items: uniqueReportItems(weekSections.flatMap((section) => section.items)).slice(0, 3),
+    };
+  });
+  return {
+    weekCount: weeks.length,
+    total: weeks.reduce((sum, week) => sum + week.total, 0),
+    sections,
   };
 }
 
@@ -640,6 +659,35 @@ function weeklyLeadershipCard(report, index) {
   `;
 }
 
+function monthlyRecapCard(monthly) {
+  const recap = monthly.recap || { weekCount: 0, total: 0, sections: [] };
+  const sections = recap.sections
+    .map(
+      (section) => `
+        <div class="monthly-recap-item">
+          <span>${escapeHtml(section.title)}</span>
+          <strong>${section.total}</strong>
+          <p>${escapeHtml(section.items[0] || "No records yet.")}</p>
+        </div>
+      `,
+    )
+    .join("");
+
+  return `
+    <article class="monthly-recap-card">
+      <header>
+        <div>
+          <p>Monthly Recap</p>
+          <h2>${escapeHtml(monthly.title)}</h2>
+        </div>
+        <strong>${recap.total}</strong>
+      </header>
+      <p class="weekly-report-summary">This month includes ${recap.weekCount} tracked week${recap.weekCount === 1 ? "" : "s"}. The recap aggregates Product Line, Brand, IMC, Julia’s Initiative, and Next Moves from your Notion records.</p>
+      <div class="monthly-recap-grid">${sections}</div>
+    </article>
+  `;
+}
+
 function renderWeekly(data) {
   const monthly = monthlyLeadershipReport(data);
   const selectedReport = selectedWeeklyReport(monthly);
@@ -653,6 +701,7 @@ function renderWeekly(data) {
         <span>${escapeHtml(monthly.sourceNote)}</span>
         ${selectedReport ? weekFilter(monthly, selectedReport) : ""}
       </div>
+      ${monthlyRecapCard(monthly)}
       ${
         selectedReport
           ? weeklyLeadershipCard(selectedReport, 0)
