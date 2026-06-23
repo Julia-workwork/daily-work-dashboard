@@ -306,7 +306,7 @@ function monthlyRecap(weeks) {
     return {
       title: name,
       total: weekSections.reduce((sum, section) => sum + section.total, 0),
-      items: uniqueReportItems(weekSections.flatMap((section) => section.items)).slice(0, 3),
+      items: uniqueReportItems(weekSections.flatMap((section) => section.items)),
     };
   });
   return {
@@ -667,11 +667,13 @@ function monthlyRecapCard(monthly) {
         ? section.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
         : "<li>No records yet.</li>";
       return `
-        <div class="monthly-recap-item">
-          <span>${escapeHtml(section.title)}</span>
-          <strong>${section.total}</strong>
+        <details class="monthly-recap-item">
+          <summary>
+            <span>${escapeHtml(section.title)}</span>
+            <strong>${section.total}</strong>
+          </summary>
           <ul class="monthly-recap-list">${items}</ul>
-        </div>
+        </details>
       `;
     })
     .join("");
