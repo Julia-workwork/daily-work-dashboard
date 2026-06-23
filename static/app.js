@@ -662,15 +662,18 @@ function weeklyLeadershipCard(report, index) {
 function monthlyRecapCard(monthly) {
   const recap = monthly.recap || { weekCount: 0, total: 0, sections: [] };
   const sections = recap.sections
-    .map(
-      (section) => `
+    .map((section) => {
+      const items = section.items.length
+        ? section.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
+        : "<li>No records yet.</li>";
+      return `
         <div class="monthly-recap-item">
           <span>${escapeHtml(section.title)}</span>
           <strong>${section.total}</strong>
-          <p>${escapeHtml(section.items[0] || "No records yet.")}</p>
+          <ul class="monthly-recap-list">${items}</ul>
         </div>
-      `,
-    )
+      `;
+    })
     .join("");
 
   return `

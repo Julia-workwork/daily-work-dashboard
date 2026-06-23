@@ -133,3 +133,13 @@ test("weekly page includes a monthly recap before the selected weekly report", a
   assert.match(renderWeeklyBlock, /monthlyRecapCard\(monthly\)/);
   assert.match(renderWeeklyBlock, /weeklyLeadershipCard\(selectedReport/);
 });
+
+test("monthly recap shows concrete item lists for each workflow area", async () => {
+  const source = await read("../static/app.js");
+  const monthlyRecapBlock = source.match(/function monthlyRecapCard\(monthly\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(monthlyRecapBlock, /monthly-recap-list/);
+  assert.match(monthlyRecapBlock, /section\.items\.map/);
+  assert.match(monthlyRecapBlock, /<li>\$\{escapeHtml\(item\)\}<\/li>/);
+  assert.doesNotMatch(monthlyRecapBlock, /section\.items\[0\]/);
+});

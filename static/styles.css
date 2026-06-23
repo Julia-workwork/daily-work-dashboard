@@ -907,6 +907,20 @@ select {
   line-height: 1.45;
 }
 
+.monthly-recap-list {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0 0;
+  padding-left: 17px;
+  color: #3f4652;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.monthly-recap-list li {
+  overflow-wrap: anywhere;
+}
+
 .weekly-report-header {
   display: flex;
   align-items: flex-start;
