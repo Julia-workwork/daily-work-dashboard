@@ -5,6 +5,7 @@ const state = {
   selectedWeek: "",
   visibleTasks: [],
   filters: {
+    week: "All",
     priority: "All",
     status: "All",
     category: "All",
@@ -172,6 +173,10 @@ function taskKey(task) {
 
 function findTaskByKey(data, key) {
   return allTasks(data).find((task) => taskKey(task) === key);
+}
+
+function cleanTaskText(text) {
+  return displayReportText(text).replace(/\\+(\[)/g, "$1");
 }
 
 function dateMonth(value) {
@@ -578,9 +583,21 @@ function filterSelect(label, key, values) {
   `;
 }
 
+function filterWeekSelect(tasks) {
+  const weeks = unique(
+    tasks
+      .map((task) => task.dueDate || task.sourceDate || task.completedDate)
+      .filter(Boolean)
+      .map(weekLabel),
+  );
+  return filterSelect("Report Week", "week", weeks);
+}
+
 function filteredTasks(data) {
   return allTasks(data).filter((task) => {
+    const taskWeek = weekLabel(task.dueDate || task.sourceDate || task.completedDate);
     return (
+      (state.filters.week === "All" || taskWeek === state.filters.week) &&
       (state.filters.priority === "All" || task.priority === state.filters.priority) &&
       (state.filters.status === "All" || task.status === state.filters.status) &&
       (state.filters.category === "All" || task.category === state.filters.category)
@@ -588,7 +605,27 @@ function filteredTasks(data) {
   });
 }
 
-function taskTable(tasks) {
+function inlineSelect(task, field, values) {
+  if (!task.sourceId) {
+    if (field === "priority") return chip(task.priority, priorityClass(task.priority));
+    if (field === "status") return chip(task.status, statusClass(task.status));
+    return escapeHtml(task[field] || "—");
+  }
+
+  return `
+    <select class="inline-task-select" data-inline-field="${field}" data-task-key="${taskKey(task)}" aria-label="Edit ${field}">
+      ${unique([...values, task[field]].filter(Boolean))
+        .map((value) => `<option value="${escapeHtml(value)}" ${task[field] === value ? "selected" : ""}>${escapeHtml(value)}</option>`)
+        .join("")}
+    </select>
+  `;
+}
+
+function taskTable(tasks, taskPool) {
+  const categoryOptions = unique([...DEFAULT_TASK_CATEGORIES, ...taskPool.map((task) => task.category)]);
+  const priorityOptions = unique([...taskPool.map((task) => task.priority), "P1", "P2", "P3"]);
+  const statusOptions = unique([...taskPool.map((task) => task.status), "Not Started", "In Progress", "Waiting on Others", "Done"]);
+
   return `
       <div class="table-panel">
       <div class="table-row table-head">
@@ -600,12 +637,12 @@ function taskTable(tasks) {
               .map(
                 (task) => `
                   <div class="table-row">
-                    <span>${escapeHtml(task.taskName)}${task.isLocalDraft ? '<em class="local-task-mark">Kept as local draft</em>' : ""}${task.notionUrl ? '<em class="local-task-mark">Saved to Workflow Tasks</em>' : ""}</span>
-                    <span>${escapeHtml(task.category)}</span>
-                    <span>${chip(task.priority, priorityClass(task.priority))}</span>
-                    <span>${chip(task.status, statusClass(task.status))}</span>
+                    <span>${escapeHtml(cleanTaskText(task.taskName))}${task.isLocalDraft ? '<em class="local-task-mark">Kept as local draft</em>' : ""}${task.notionUrl ? '<em class="local-task-mark">Saved to Workflow Tasks</em>' : ""}</span>
+                    <span>${inlineSelect(task, "category", categoryOptions)}</span>
+                    <span>${inlineSelect(task, "priority", priorityOptions)}</span>
+                    <span>${inlineSelect(task, "status", statusOptions)}</span>
                     <span>${escapeHtml(task.dueDate || "—")}</span>
-                    <span>${escapeHtml(task.nextAction || "—")}</span>
+                    <span>${escapeHtml(cleanTaskText(task.nextAction || "—"))}</span>
                     <span><button class="text-action compact-action" type="button" data-edit-task="${taskKey(task)}">Edit</button></span>
                   </div>
                 `,
@@ -770,6 +807,26 @@ function replaceTaskInState(data, updatedTask) {
   state.localTasks = state.localTasks.map(replace);
 }
 
+async function updateInlineTaskField(data, select) {
+  const task = findTaskByKey(data, select.dataset.taskKey);
+  const field = select.dataset.inlineField;
+  if (!task || !field) return;
+
+  const previousValue = task[field];
+  const updatedTask = { ...task, [field]: select.value };
+  select.disabled = true;
+  try {
+    await saveTaskEdit(updatedTask);
+    replaceTaskInState(data, updatedTask);
+    renderTasks(data);
+  } catch (error) {
+    select.value = previousValue;
+    showState(error instanceof Error ? error.message : "Could not update this item in Notion.", "error");
+  } finally {
+    select.disabled = false;
+  }
+}
+
 function fillTaskEditForm(form, task) {
   form.elements.sourceId.value = task.sourceId || "";
   form.elements.sourceType.value = task.sourceType || "";
@@ -831,6 +888,12 @@ function bindTaskEditor(data) {
   });
 }
 
+function bindInlineTaskControls(data) {
+  elements.tasks.querySelectorAll("[data-inline-field]").forEach((select) => {
+    select.addEventListener("change", () => updateInlineTaskField(data, select));
+  });
+}
+
 function bindTaskCreator(data) {
   const dialog = elements.tasks.querySelector("#task-dialog");
   const form = elements.tasks.querySelector("#task-form");
@@ -878,13 +941,14 @@ function renderTasks(data) {
     </section>
     <section class="task-toolbar">
       <div class="filters">
+        ${filterWeekSelect(taskPool)}
         ${filterSelect("Priority", "priority", unique(taskPool.map((task) => task.priority)))}
         ${filterSelect("Status", "status", unique(taskPool.map((task) => task.status)))}
         ${filterSelect("Category", "category", unique(taskPool.map((task) => task.category)))}
       </div>
       <button class="text-action primary-action" type="button" data-open-task>New Task</button>
     </section>
-    <article class="zine-panel">${taskTable(tasks)}</article>
+    <article class="zine-panel">${taskTable(tasks, taskPool)}</article>
     ${taskForm(data)}
     ${taskEditForm(data)}
   `;
@@ -899,6 +963,7 @@ function renderTasks(data) {
   bindTaskCreator(data);
   bindTaskEditor(data);
   bindEditTaskButtons(data);
+  bindInlineTaskControls(data);
 }
 
 function weeklyBlock(title, value) {

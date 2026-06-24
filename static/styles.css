@@ -784,6 +784,20 @@ select {
   font-size: 13px;
 }
 
+.inline-task-select {
+  width: 100%;
+  min-width: 0;
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.78);
+  font: 650 13px/1 var(--system-font);
+}
+
+.inline-task-select:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .row-edit-action {
   align-self: center;
   justify-self: end;

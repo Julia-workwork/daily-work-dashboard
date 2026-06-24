@@ -46,6 +46,7 @@ test("browser source contains required Action Zine English labels", async () => 
     "Records",
     "Quantified Output",
     "Edit Task",
+    "Report Week",
     "New Task",
     "Save to Notion",
     "Saved to Workflow Tasks",
@@ -172,10 +173,22 @@ test("frontend supports editing tasks and source records", async () => {
   const source = await read("../static/app.js");
 
   assert.match(source, /data-edit-task/);
+  assert.match(source, /data-inline-field/);
+  assert.match(source, /bindInlineTaskControls/);
   assert.match(source, /saveTaskEdit/);
   assert.match(source, /\/api\/notion\/daily-work/);
   assert.match(source, /\/api\/notion\/tasks/);
   assert.match(source, /name="taskName"/);
+});
+
+test("tasks page supports week filtering and cleaned tag display", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /week:\s*"All"/);
+  assert.match(source, /filterWeekSelect/);
+  assert.match(source, /state\.filters\.week/);
+  assert.match(source, /cleanTaskText/);
+  assert.match(source, /displayReportText\(text\)/);
 });
 
 test("weekly and monthly reporting exposes quantified output details", async () => {
