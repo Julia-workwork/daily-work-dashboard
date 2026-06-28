@@ -157,11 +157,27 @@ test("weekly executive summary can be edited in place", async () => {
   const source = await read("../static/app.js");
 
   assert.match(source, /editableExecutiveSummary/);
+  assert.match(source, /summaryFieldValue/);
   assert.match(source, /bindExecutiveSummaryEditor/);
-  assert.match(source, /data-summary-line/);
+  assert.match(source, /data-summary-field/);
   assert.match(source, /data-save-summary/);
   assert.match(source, /localStorage\.setItem/);
   assert.doesNotMatch(source, /Editable Weekly Draft/);
+});
+
+test("weekly executive summary separates editable sections visually", async () => {
+  const source = await read("../static/app.js");
+  const editableSummaryBlock = source.match(/function editableExecutiveSummary\(report\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  for (const label of ["Overview", "Key Completed Work", "In Progress", "Waiting / TBD"]) {
+    assert.match(editableSummaryBlock, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+
+  assert.match(editableSummaryBlock, /summary-edit-field/);
+  assert.match(editableSummaryBlock, /data-summary-field/);
+  for (const field of ['id: "overview"', 'id: "completed"', 'id: "progress"', 'id: "waiting"']) {
+    assert.match(editableSummaryBlock, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
 });
 
 test("weekly report recognizes short workflow tag aliases", async () => {
@@ -204,11 +220,25 @@ test("monthly recap shows every concrete item in collapsible lists", async () =>
   assert.match(monthlyRecapBlock, /Quantified Output Details/);
   assert.match(monthlyRecapBlock, /monthly-recap-metrics/);
   assert.match(monthlyRecapBlock, /monthly-summary-panel/);
+  assert.match(monthlyRecapBlock, /monthlyOutputDetails/);
   assert.match(monthlyRecapBlock, /monthly-recap-list/);
   assert.match(monthlyRecapBlock, /list\(recap\.ongoingProjects/);
   assert.match(monthlyRecapBlock, /list\(recap\.leadershipSummary/);
   assert.match(monthlyRecapBlock, /<li>\$\{escapeHtml\(item\)\}<\/li>/);
   assert.doesNotMatch(source, /weekSections\.flatMap\(\(section\) => section\.items\)\)\.slice\(0,\s*3\)/);
+});
+
+test("monthly quantified output details are grouped by business line", async () => {
+  const source = await read("../static/app.js");
+  const outputDetailsBlock = source.match(/function monthlyOutputDetails\(recap\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(outputDetailsBlock, /recap\.sections/);
+  assert.match(outputDetailsBlock, /Product Line/);
+  assert.match(outputDetailsBlock, /Brand/);
+  assert.match(outputDetailsBlock, /IMC/);
+  assert.match(outputDetailsBlock, /section\.quantifiedOutput/);
+  assert.match(outputDetailsBlock, /section\.quantifiedItems/);
+  assert.match(outputDetailsBlock, /monthly-output-line/);
 });
 
 test("frontend supports editing tasks and source records", async () => {

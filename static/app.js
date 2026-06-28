@@ -453,11 +453,27 @@ function summaryDraftKey(report, lineTitle) {
   return `daily-work-weekly-summary:${report.week || "current"}:${lineTitle}`;
 }
 
-function savedSummaryText(report, lineTitle) {
+function summaryFieldKey(report, lineTitle, field) {
+  return `${summaryDraftKey(report, lineTitle)}:${field}`;
+}
+
+function summaryFieldDefaults(line) {
+  const output = line.quantifiedOutput
+    ? `${line.quantifiedOutput} quantified output`
+    : `${line.records} tracked records`;
+  return {
+    overview: `${line.title}: ${line.records} records, ${output}.`,
+    completed: formatSummaryList(line.quantifiedItems, "No completed output captured yet."),
+    progress: formatSummaryList(line.progressItems, "No active progress records captured yet."),
+    waiting: formatSummaryList(line.waitingItems, "No waiting or TBD records captured yet."),
+  };
+}
+
+function summaryFieldValue(report, line, field) {
   try {
-    return localStorage.getItem(summaryDraftKey(report, lineTitle)) || "";
+    return localStorage.getItem(summaryFieldKey(report, line.title, field)) || summaryFieldDefaults(line)[field] || "";
   } catch {
-    return "";
+    return summaryFieldDefaults(line)[field] || "";
   }
 }
 
@@ -1231,17 +1247,29 @@ function editableExecutiveSummary(report) {
     return '<p class="muted">No executive summary available yet.</p>';
   }
 
-  return lines.map((line, index) => {
-    const fallback = line.summary || report.executiveSummary?.[index] || "";
-    const value = savedSummaryText(report, line.title) || fallback;
+  return lines.map((line) => {
     const key = summaryDraftKey(report, line.title);
+    const fields = [
+      { id: "overview", label: "Overview", rows: 2 },
+      { id: "completed", label: "Key Completed Work", rows: 5 },
+      { id: "progress", label: "In Progress", rows: 4 },
+      { id: "waiting", label: "Waiting / TBD", rows: 4 },
+    ];
 
     return `
       <article class="summary-edit-item">
-        <label>
-          <span>${escapeHtml(line.title)}</span>
-          <textarea data-summary-line="${escapeHtml(line.title)}" rows="7">${escapeHtml(value)}</textarea>
-        </label>
+        <header>
+          <h4>${escapeHtml(line.title)}</h4>
+          <p>${line.records} records · ${line.quantifiedOutput} quantified output</p>
+        </header>
+        <div class="summary-edit-fields">
+          ${fields.map((field) => `
+            <label class="summary-edit-field">
+              <span>${escapeHtml(field.label)}</span>
+              <textarea data-summary-field="${escapeHtml(field.id)}" rows="${field.rows}">${escapeHtml(summaryFieldValue(report, line, field.id))}</textarea>
+            </label>
+          `).join("")}
+        </div>
         <div class="summary-edit-actions">
           <button class="text-action" type="button" data-save-summary="${escapeHtml(key)}">Save Summary</button>
           <p class="task-save-status" data-summary-status></p>
@@ -1330,10 +1358,38 @@ function monthlyRecapCard(monthly) {
       </section>
       <section class="monthly-summary-panel">
         <h3>Quantified Output Details</h3>
-        ${list(recap.quantifiedItems, "No quantified output detected yet.")}
+        ${monthlyOutputDetails(recap)}
       </section>
     </article>
   `;
+}
+
+function monthlyOutputDetails(recap) {
+  const lineOrder = ["Product Line", "Brand", "IMC"];
+  const sections = lineOrder.map((title) => {
+    const section = recap.sections.find((item) => item.title === title) || {
+      title,
+      quantifiedOutput: 0,
+      quantifiedItems: [],
+    };
+    const items = section.quantifiedItems.length
+      ? section.quantifiedItems
+      : ["No quantified output detected yet."];
+
+    return `
+      <article class="monthly-output-line">
+        <header>
+          <h4>${escapeHtml(section.title)}</h4>
+          <strong>${section.quantifiedOutput}</strong>
+        </header>
+        <ul class="monthly-recap-list">
+          ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+        </ul>
+      </article>
+    `;
+  });
+
+  return `<div class="monthly-output-grid">${sections.join("")}</div>`;
 }
 
 function workflowTagGuide() {
@@ -1396,11 +1452,13 @@ function bindExecutiveSummaryEditor() {
   elements.weekly.querySelectorAll("[data-save-summary]").forEach((button) => {
     button.addEventListener("click", () => {
       const item = button.closest(".summary-edit-item");
-      const textarea = item?.querySelector("[data-summary-line]");
+      const fields = [...(item?.querySelectorAll("[data-summary-field]") || [])];
       const status = item?.querySelector("[data-summary-status]");
-      if (!textarea) return;
+      if (!fields.length) return;
       try {
-        localStorage.setItem(button.dataset.saveSummary, textarea.value);
+        fields.forEach((field) => {
+          localStorage.setItem(`${button.dataset.saveSummary}:${field.dataset.summaryField}`, field.value);
+        });
         if (status) status.textContent = "Summary saved in this browser.";
       } catch {
         if (status) status.textContent = "Could not save this summary in the browser.";
