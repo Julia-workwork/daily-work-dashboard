@@ -307,6 +307,48 @@ function displayReportText(text) {
     .trim();
 }
 
+function cleanSummaryText(text) {
+  return displayReportText(text)
+    .replace(/\[[^\]]*https?:\/\/[^\]]+\]\(https?:\/\/[^\s)]+\)/g, "")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/\bMessaeg\b/gi, "Message")
+    .replace(/\bMesseag\b/gi, "Message")
+    .replace(/\bHandel\b/gi, "Handle")
+    .replace(/\s+/g, " ")
+    .replace(/^[，,；;。.\s]+|[，,；;。.\s]+$/g, "")
+    .trim();
+}
+
+function isStandaloneSummaryNoise(text) {
+  return /^(Meeting|Product|User Feedback|Content|Data|Other)$/i.test(cleanSummaryText(text));
+}
+
+function summaryThemeLabel(text) {
+  const value = cleanSummaryText(text);
+  if (/message|sms|beta|firmware|ax\.?25|bluetooth|ha2|h1 calllog|call log/i.test(value)) return "Message / SMS function";
+  if (/用户|user|customer|issue|问题|反馈|email|amazon|calibration|频|interference|hd1|ma1|rv\d+|rt\d+|lr\d+/i.test(value)) return "User issues / feedback";
+  if (/video|post|blog|图片|pic|素材|白底图|拍摄|剪辑|发布|script|直播|exhibition|展会/i.test(value)) return "Content / assets";
+  if (/需求|requirement|pm|pmo|研发|r&d|提交|管理/i.test(value)) return "Requirement management";
+  if (/imc|标签|research|analysis|report|汇报|数据分析|周例会|meeting/i.test(value)) return "Reporting / alignment";
+  return "Other completed work";
+}
+
+function summarizeReportItems(items, emptyText) {
+  const grouped = new Map();
+  for (const item of uniqueReportItems(items.map(cleanSummaryText)).filter((value) => value && !isStandaloneSummaryNoise(value))) {
+    const label = summaryThemeLabel(item);
+    grouped.set(label, [...(grouped.get(label) || []), item]);
+  }
+
+  if (!grouped.size) return emptyText;
+
+  return [...grouped.entries()]
+    .map(([label, values]) => `${label}: ${values.length} record${values.length === 1 ? "" : "s"} - ${values.join("；")}`)
+    .join("\n");
+}
+
 function isOngoingRecord(item) {
   return item.weekday === "This Week Ongoing" || /weekly-level ongoing/i.test(item.notes || "");
 }
@@ -358,10 +400,6 @@ function isQuantifiedOutputItem(item) {
   return item.done || hasAnyTag(item, ["Output", "Done"]) || explicitQuantity(item.text) > 0;
 }
 
-function formatSummaryList(items, emptyText) {
-  return items.length ? items.join("；") : emptyText;
-}
-
 function reportSection(title, items) {
   const uniqueItems = uniqueReportItems(items.map((item) => displayReportText(item.text))).slice(0, 6);
   const quantifiedItems = uniqueReportItems(
@@ -401,7 +439,7 @@ function lineReport(line, items) {
   const lineItems = items.filter((item) => itemMatches(item, line.tags, line.keywords));
   const quantifiedItems = uniqueReportItems(
     lineItems
-      .filter(isQuantifiedOutputItem)
+      .filter((item) => isQuantifiedOutputItem(item) && !isWaitingOrTbdItem(item))
       .map((item) => displayReportText(item.text)),
   );
   const progressItems = uniqueReportItems(
@@ -414,7 +452,9 @@ function lineReport(line, items) {
       .filter(isWaitingOrTbdItem)
       .map((item) => displayReportText(item.text)),
   );
-  const quantifiedOutput = lineItems.reduce((sum, item) => sum + explicitQuantity(item.text), 0);
+  const quantifiedOutput = lineItems
+    .filter((item) => isQuantifiedOutputItem(item) && !isWaitingOrTbdItem(item))
+    .reduce((sum, item) => sum + explicitQuantity(item.text), 0);
 
   return {
     title: line.title,
@@ -439,9 +479,9 @@ function lineSummaryText(title, details) {
     : `${details.records} tracked records`;
   return [
     `${title}: ${details.records} records, ${output}.`,
-    `Key Completed Work: ${formatSummaryList(details.quantifiedItems, "No completed output captured yet.")}.`,
-    `In Progress: ${formatSummaryList(details.progressItems, "No active progress records captured yet.")}.`,
-    `Waiting / TBD: ${formatSummaryList(details.waitingItems, "No waiting or TBD records captured yet.")}.`,
+    `Key Completed Work: ${summarizeReportItems(details.quantifiedItems, "No completed output captured yet.")}.`,
+    `In Progress: ${summarizeReportItems(details.progressItems, "No active progress records captured yet.")}.`,
+    `Waiting / TBD: ${summarizeReportItems(details.waitingItems, "No waiting or TBD records captured yet.")}.`,
   ].join("\n");
 }
 
@@ -463,9 +503,9 @@ function summaryFieldDefaults(line) {
     : `${line.records} tracked records`;
   return {
     overview: `${line.title}: ${line.records} records, ${output}.`,
-    completed: formatSummaryList(line.quantifiedItems, "No completed output captured yet."),
-    progress: formatSummaryList(line.progressItems, "No active progress records captured yet."),
-    waiting: formatSummaryList(line.waitingItems, "No waiting or TBD records captured yet."),
+    completed: summarizeReportItems(line.quantifiedItems, "No completed output captured yet."),
+    progress: summarizeReportItems(line.progressItems, "No active progress records captured yet."),
+    waiting: summarizeReportItems(line.waitingItems, "No waiting or TBD records captured yet."),
   };
 }
 

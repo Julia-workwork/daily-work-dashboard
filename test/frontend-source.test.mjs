@@ -148,9 +148,25 @@ test("weekly executive summary includes all line items instead of samples", asyn
   assert.match(lineSummaryBlock, /Key Completed Work/);
   assert.match(lineSummaryBlock, /In Progress/);
   assert.match(lineSummaryBlock, /Waiting \/ TBD/);
-  assert.match(lineSummaryBlock, /formatSummaryList/);
+  assert.match(lineSummaryBlock, /summarizeReportItems/);
   assert.doesNotMatch(lineReportBlock, /\.slice\(0,\s*6\)/);
   assert.doesNotMatch(lineReportBlock, /compactItems/);
+});
+
+test("weekly executive summary cleans and groups raw records before display", async () => {
+  const source = await read("../static/app.js");
+  const lineReportBlock = source.match(/function lineReport\(line, items\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /cleanSummaryText/);
+  assert.match(source, /isStandaloneSummaryNoise/);
+  assert.match(source, /summaryThemeLabel/);
+  assert.match(source, /summarizeReportItems/);
+  assert.match(source, /Message \/ SMS function/);
+  assert.match(source, /User issues \/ feedback/);
+  assert.match(source, /Content \/ assets/);
+  assert.match(source, /Requirement management/);
+  assert.match(source, /https\?:/);
+  assert.match(lineReportBlock, /!isWaitingOrTbdItem\(item\)/);
 });
 
 test("weekly executive summary can be edited in place", async () => {
