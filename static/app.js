@@ -189,7 +189,11 @@ function monthTitle(monthKey) {
   return new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("en", { month: "long", year: "numeric" });
 }
 
-function weekLabel(dateText) {
+function formatRangeDate(date) {
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function canonicalWeekLabel(dateText) {
   if (!dateText) return "Unscheduled Week";
   const date = new Date(`${dateText}T00:00:00`);
   const day = date.getDay() || 7;
@@ -197,8 +201,31 @@ function weekLabel(dateText) {
   monday.setDate(date.getDate() - day + 1);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  const format = (date) => date.toLocaleDateString("en", { month: "short", day: "numeric" });
-  return `Week of ${format(monday)} - ${format(sunday)}`;
+  return `${formatRangeDate(monday)}-${formatRangeDate(sunday)}`;
+}
+
+function parseWeekRangeLabel(label) {
+  const match = String(label || "").match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})\s*-\s*(?:(\d{4})[./-])?(\d{1,2})[./-](\d{1,2})/);
+  if (!match) return null;
+  const [, startYear, startMonth, startDay, endYear, endMonth, endDay] = match;
+  const toIso = (year, month, day) => `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return {
+    label,
+    start: toIso(startYear, startMonth, startDay),
+    end: toIso(endYear || startYear, endMonth, endDay),
+  };
+}
+
+function reportWeekLabel(data, dateText) {
+  const ranges = unique((data.dailyExtracts || []).map((item) => item.weekRange))
+    .map(parseWeekRangeLabel)
+    .filter(Boolean);
+  const matched = ranges.find((range) => dateText && dateText >= range.start && dateText <= range.end);
+  return matched?.label || canonicalWeekLabel(dateText);
+}
+
+function weekLabel(dateText) {
+  return canonicalWeekLabel(dateText);
 }
 
 function reportSourceText(item) {
@@ -275,7 +302,7 @@ function recordItems(item) {
   return [
     ...splitText(completedText || fallbackText).map((text) => ({
       date: item.date,
-      week: item.weekRange || weekLabel(item.date),
+      week: item.weekRange || canonicalWeekLabel(item.date),
       weekday: item.weekday,
       text,
       type: isOngoingRecord(item) ? "ongoing" : "daily",
@@ -283,7 +310,7 @@ function recordItems(item) {
     })),
     ...splitText(openText).map((text) => ({
       date: item.date,
-      week: item.weekRange || weekLabel(item.date),
+      week: item.weekRange || canonicalWeekLabel(item.date),
       weekday: item.weekday,
       text,
       type: isOngoingRecord(item) ? "ongoing" : "daily",
@@ -356,7 +383,7 @@ function reportItemsForMonth(data, monthKey) {
       const date = task.sourceDate || task.completedDate || task.dueDate;
       return {
         date,
-        week: weekLabel(date),
+        week: reportWeekLabel(data, date),
         text: reportSourceText(task),
         type: "task",
         done: isDone(task),
@@ -384,6 +411,7 @@ function leadershipWeekReport(week, items, weekly) {
         .filter((item) => explicitQuantity(item.text) > 0)
         .map((item) => `${displayReportText(item.text)} (${explicitQuantity(item.text)})`),
     ),
+    items,
     sections: workflowSections([
       ...items,
       ...openFollowUps.map((text) => ({ text: `[TBD] ${text}`, done: false })),
@@ -428,12 +456,24 @@ function monthlyRecap(weeks) {
       items: uniqueReportItems(weekSections.flatMap((section) => section.items)),
     };
   });
+  const allItems = weeks.flatMap((week) => week.items || []);
+  const quantifiedItems = uniqueReportItems(weeks.flatMap((week) => week.quantifiedItems));
+  const ongoingProjects = uniqueReportItems(
+    allItems
+      .filter((item) => item.type === "ongoing")
+      .map((item) => displayReportText(item.text)),
+  );
+  const leadershipSummary = sections
+    .filter((section) => section.items.length)
+    .map((section) => `${section.title}: ${section.items.slice(0, 4).join("；")}`);
   return {
     weekCount: weeks.length,
     total: weeks.reduce((sum, week) => sum + week.total, 0),
     records: weeks.reduce((sum, week) => sum + week.records, 0),
     quantifiedOutput: weeks.reduce((sum, week) => sum + week.quantifiedOutput, 0),
-    quantifiedItems: uniqueReportItems(weeks.flatMap((week) => week.quantifiedItems)),
+    quantifiedItems,
+    ongoingProjects,
+    leadershipSummary,
     sections,
   };
 }
@@ -665,14 +705,14 @@ function filterWeekSelect(tasks) {
     tasks
       .map((task) => task.dueDate || task.sourceDate || task.completedDate)
       .filter(Boolean)
-      .map(weekLabel),
+      .map(canonicalWeekLabel),
   );
   return filterSelect("Report Week", "week", weeks);
 }
 
 function filteredTasks(data) {
   return allTasks(data).filter((task) => {
-    const taskWeek = weekLabel(task.dueDate || task.sourceDate || task.completedDate);
+    const taskWeek = canonicalWeekLabel(task.dueDate || task.sourceDate || task.completedDate);
     return (
       (state.filters.week === "All" || taskWeek === state.filters.week) &&
       (state.filters.priority === "All" || task.priority === state.filters.priority) &&
@@ -690,11 +730,13 @@ function inlineSelect(task, field, values) {
   }
 
   return `
+    <span class="direct-edit-cell">
     <select class="inline-task-select" data-inline-field="${field}" data-task-key="${taskKey(task)}" aria-label="Edit ${field}">
       ${unique([...values, task[field]].filter(Boolean))
         .map((value) => `<option value="${escapeHtml(value)}" ${task[field] === value ? "selected" : ""}>${escapeHtml(value)}</option>`)
         .join("")}
     </select>
+    </span>
   `;
 }
 
@@ -1094,32 +1136,17 @@ function weeklyLeadershipCard(report, index) {
 }
 
 function monthlyRecapCard(monthly) {
-  const recap = monthly.recap || { weekCount: 0, total: 0, records: 0, quantifiedOutput: 0, quantifiedItems: [], sections: [] };
-  const sections = recap.sections
-    .map((section) => {
-      const items = section.items.length
-        ? section.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
-        : "<li>No records yet.</li>";
-      return `
-        <details class="monthly-recap-item">
-          <summary>
-            <span>${escapeHtml(section.title)}</span>
-            <strong>${section.total}</strong>
-          </summary>
-          <div class="monthly-section-metrics">
-            <span>Records ${section.records}</span>
-            <span>Quantified Output ${section.quantifiedOutput}</span>
-          </div>
-          <ul class="monthly-recap-list">${items}</ul>
-          ${
-            section.quantifiedItems?.length
-              ? `<h4>Quantified Output Details</h4><ul class="monthly-recap-list">${section.quantifiedItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
-              : ""
-          }
-        </details>
-      `;
-    })
-    .join("");
+  const recap = monthly.recap || {
+    weekCount: 0,
+    total: 0,
+    records: 0,
+    quantifiedOutput: 0,
+    quantifiedItems: [],
+    ongoingProjects: [],
+    leadershipSummary: [],
+    sections: [],
+  };
+  const list = (items, empty) => `<ul class="monthly-recap-list">${items.length ? items.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : `<li>${escapeHtml(empty)}</li>`}</ul>`;
 
   return `
     <article class="monthly-recap-card">
@@ -1134,13 +1161,27 @@ function monthlyRecapCard(monthly) {
         <span>Records <strong>${recap.records}</strong></span>
         <span>Quantified Output <strong>${recap.quantifiedOutput}</strong></span>
       </div>
-      <p class="weekly-report-summary">This month includes ${recap.weekCount} tracked week${recap.weekCount === 1 ? "" : "s"}. The recap aggregates Product Line, Brand, IMC, Julia’s Initiative, and Next Moves from your Notion records.</p>
-      ${
-        recap.quantifiedItems.length
-          ? `<section class="quantified-output-block"><h3>Quantified Output Details</h3><ul>${recap.quantifiedItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>`
-          : ""
-      }
-      <div class="monthly-recap-grid">${sections}</div>
+      <p class="weekly-report-summary">This month includes ${recap.weekCount} tracked week${recap.weekCount === 1 ? "" : "s"}. The recap is organized for reporting: records, quantified output, ongoing projects, and a leadership-ready summary.</p>
+      <div class="monthly-recap-grid">
+        <section class="monthly-recap-item">
+          <h3>Records</h3>
+          <strong>${recap.records}</strong>
+          <p>Total source records captured this month.</p>
+        </section>
+        <section class="monthly-recap-item">
+          <h3>Quantified Output</h3>
+          <strong>${recap.quantifiedOutput}</strong>
+          ${list(recap.quantifiedItems, "No quantified output detected yet.")}
+        </section>
+        <section class="monthly-recap-item">
+          <h3>Ongoing Projects</h3>
+          ${list(recap.ongoingProjects, "No weekly ongoing projects captured yet.")}
+        </section>
+        <section class="monthly-recap-item leadership-summary-item">
+          <h3>Leadership Summary</h3>
+          ${list(recap.leadershipSummary, "No summary-ready records captured yet.")}
+        </section>
+      </div>
     </article>
   `;
 }

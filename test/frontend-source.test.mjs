@@ -161,12 +161,14 @@ test("monthly recap shows every concrete item in collapsible lists", async () =>
   const source = await read("../static/app.js");
   const monthlyRecapBlock = source.match(/function monthlyRecapCard\(monthly\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
 
-  assert.match(monthlyRecapBlock, /<details class="monthly-recap-item"/);
-  assert.match(monthlyRecapBlock, /<summary>/);
+  assert.match(monthlyRecapBlock, /Records/);
+  assert.match(monthlyRecapBlock, /Quantified Output/);
+  assert.match(monthlyRecapBlock, /Ongoing Projects/);
+  assert.match(monthlyRecapBlock, /Leadership Summary/);
   assert.match(monthlyRecapBlock, /monthly-recap-list/);
-  assert.match(monthlyRecapBlock, /section\.items\.map/);
+  assert.match(monthlyRecapBlock, /list\(recap\.ongoingProjects/);
+  assert.match(monthlyRecapBlock, /list\(recap\.leadershipSummary/);
   assert.match(monthlyRecapBlock, /<li>\$\{escapeHtml\(item\)\}<\/li>/);
-  assert.doesNotMatch(monthlyRecapBlock, /section\.items\[0\]/);
   assert.doesNotMatch(source, /weekSections\.flatMap\(\(section\) => section\.items\)\)\.slice\(0,\s*3\)/);
 });
 
@@ -187,9 +189,29 @@ test("tasks page supports week filtering and cleaned tag display", async () => {
 
   assert.match(source, /week:\s*"All"/);
   assert.match(source, /filterWeekSelect/);
+  assert.match(source, /canonicalWeekLabel/);
+  assert.match(source, /reportWeekLabel/);
   assert.match(source, /state\.filters\.week/);
   assert.match(source, /cleanTaskText/);
   assert.match(source, /displayReportText\(text\)/);
+});
+
+test("weekly report uses one normalized week label format", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /parseWeekRangeLabel/);
+  assert.match(source, /reportWeekLabel\(data,\s*date\)/);
+  assert.doesNotMatch(source, /week:\s*weekLabel\(date\)/);
+});
+
+test("task table presents direct inline editing controls", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+
+  assert.match(source, /data-inline-field="\$\{field\}"/);
+  assert.match(source, /direct-edit-cell/);
+  assert.match(styles, /\.direct-edit-cell/);
+  assert.match(styles, /\.inline-task-select/);
 });
 
 test("weekly and monthly reporting exposes quantified output details", async () => {
