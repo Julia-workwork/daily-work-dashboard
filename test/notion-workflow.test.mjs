@@ -10,6 +10,9 @@ import {
 
 const DAILY_MARKDOWN = `
 # 2026.06.22-2026.06.27 {toggle="true"}
+\t## This Week Ongoing {toggle="true"}
+\t\t- [ ] [PL][Progress][TBD] Message beta function 用户反馈整理
+\t\t- [x] [BR][Output][Done] H1 calllog video 发布 1 条
 \t## Monday {toggle="true"}
 \t\t- [x] 跟进用户问题3个
 \t\t- [ ] Message function 白底图拍摄待完成
@@ -28,7 +31,7 @@ const DAILY_MARKDOWN = `
 test("parseDailyWorkMarkdown keeps only the selected month and preserves week ranges", () => {
   const result = parseDailyWorkMarkdown(DAILY_MARKDOWN, { month: "2026-06" });
 
-  assert.deepEqual(result.dailyExtracts.map((item) => item.date), ["2026-06-22", "2026-06-18", "2026-06-15"]);
+  assert.deepEqual(result.dailyExtracts.map((item) => item.date), ["2026-06-22", "2026-06-22", "2026-06-18", "2026-06-15"]);
   assert.deepEqual([...new Set(result.dailyExtracts.map((item) => item.weekRange))], [
     "2026.06.22-2026.06.27",
     "2026.06.15-2026.06.18",
@@ -37,6 +40,17 @@ test("parseDailyWorkMarkdown keeps only the selected month and preserves week ra
   assert.equal(previousMonday.completedWork, "blog upload 5 posts");
   assert.equal(previousMonday.followUps, "Message 预告帖子 YouTube");
   assert.equal(result.tasks.some((task) => task.taskName.includes("May task")), false);
+});
+
+test("parseDailyWorkMarkdown separates weekly ongoing work from daily records", () => {
+  const result = parseDailyWorkMarkdown(DAILY_MARKDOWN, { month: "2026-06" });
+  const ongoing = result.dailyExtracts.find((item) => item.weekday === "This Week Ongoing");
+
+  assert.ok(ongoing);
+  assert.equal(ongoing.completedWork, "[BR][Output][Done] H1 calllog video 发布 1 条");
+  assert.equal(ongoing.followUps, "[PL][Progress][TBD] Message beta function 用户反馈整理");
+  assert.equal(ongoing.weeklyReportCandidate, "[BR][Output][Done] H1 calllog video 发布 1 条；[PL][Progress][TBD] Message beta function 用户反馈整理");
+  assert.equal(result.tasks.some((task) => task.taskName.includes("Message beta function 用户反馈整理")), false);
 });
 
 test("parseDailyWorkMarkdown turns open todos into read-only workflow tasks", () => {

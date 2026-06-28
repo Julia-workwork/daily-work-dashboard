@@ -262,6 +262,36 @@ function displayReportText(text) {
     .trim();
 }
 
+function isOngoingRecord(item) {
+  return item.weekday === "This Week Ongoing" || /weekly-level ongoing/i.test(item.notes || "");
+}
+
+function recordItems(item) {
+  const completedText = [item.completedWork, item.keyOutputs].filter(Boolean).join("；");
+  const openText = [item.inProgress, item.followUps, item.risksIssues, item.tomorrowReminders, item.notes]
+    .filter((value) => value && !/weekly-level ongoing/i.test(value))
+    .join("；");
+  const fallbackText = !completedText && !openText ? item.weeklyReportCandidate : "";
+  return [
+    ...splitText(completedText || fallbackText).map((text) => ({
+      date: item.date,
+      week: item.weekRange || weekLabel(item.date),
+      weekday: item.weekday,
+      text,
+      type: isOngoingRecord(item) ? "ongoing" : "daily",
+      done: true,
+    })),
+    ...splitText(openText).map((text) => ({
+      date: item.date,
+      week: item.weekRange || weekLabel(item.date),
+      weekday: item.weekday,
+      text,
+      type: isOngoingRecord(item) ? "ongoing" : "daily",
+      done: false,
+    })),
+  ];
+}
+
 function itemMatches(item, tags, keywords) {
   return hasReportTag(item, tags) || keywords.test(item.text);
 }
@@ -318,23 +348,7 @@ function latestReportMonth(data) {
 function reportItemsForMonth(data, monthKey) {
   const dailyItems = data.dailyExtracts
     .filter((item) => dateMonth(item.date) === monthKey)
-    .flatMap((item) => {
-      const completed = splitText([item.completedWork, item.keyOutputs, item.weeklyReportCandidate].filter(Boolean).join("；")).map((text) => ({
-        date: item.date,
-        week: weekLabel(item.date),
-        text,
-        type: "daily",
-        done: true,
-      }));
-      const open = splitText([item.inProgress, item.followUps, item.risksIssues, item.tomorrowReminders, item.notes].filter(Boolean).join("；")).map((text) => ({
-        date: item.date,
-        week: weekLabel(item.date),
-        text,
-        type: "daily",
-        done: false,
-      }));
-      return [...completed, ...open];
-    });
+    .flatMap(recordItems);
 
   const taskItems = data.tasks
     .filter((task) => task.sourceType !== "daily-work")
@@ -430,6 +444,29 @@ function selectedWeeklyReport(monthly) {
   return selected || monthly.weeks[0];
 }
 
+function weeklyOngoingItems(data, weekRange) {
+  return data.dailyExtracts
+    .filter((item) => item.weekRange === weekRange && isOngoingRecord(item))
+    .flatMap(recordItems)
+    .filter((item) => item.text);
+}
+
+function dailyRecordGroups(data, weekRange) {
+  const groups = new Map();
+  for (const item of data.dailyExtracts) {
+    if (item.weekRange !== weekRange || isOngoingRecord(item)) continue;
+    const records = recordItems(item).filter((record) => record.text);
+    if (!records.length) continue;
+    const key = `${item.date}|${item.weekday}`;
+    groups.set(key, {
+      date: item.date,
+      weekday: item.weekday,
+      records: [...(groups.get(key)?.records || []), ...records],
+    });
+  }
+  return [...groups.values()].sort((left, right) => left.date.localeCompare(right.date));
+}
+
 function weekFilter(monthly, selectedReport) {
   if (monthly.weeks.length <= 1) return "";
   return `
@@ -518,6 +555,31 @@ function overviewWeeklyDraft(report) {
   `;
 }
 
+function ongoingCard(item, index) {
+  return `
+    <article class="ongoing-item ${item.done ? "is-done" : ""}">
+      <span>${String(index + 1).padStart(2, "0")}</span>
+      <div>
+        <h3>${escapeHtml(displayReportText(item.text))}</h3>
+        <p>${item.done ? "Completed this week" : "Still moving"}</p>
+      </div>
+    </article>
+  `;
+}
+
+function dailyRecordGroup(group) {
+  const items = uniqueReportItems(group.records.map((item) => displayReportText(item.text))).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  return `
+    <details class="daily-record-group">
+      <summary>
+        <span>${escapeHtml(group.weekday)}</span>
+        <strong>${escapeHtml(group.date)}</strong>
+      </summary>
+      <ul>${items}</ul>
+    </details>
+  `;
+}
+
 function renderOverview(data) {
   const openTasks = countBy(data.tasks, (task) => !isDone(task));
   const reviewTasks = countBy(data.tasks, (task) => task.needsReview || String(task.status).includes("Review"));
@@ -525,6 +587,8 @@ function renderOverview(data) {
   const focusTasks = data.todayFocus.slice(0, 3);
   const monthly = monthlyLeadershipReport(data);
   const selectedReport = selectedWeeklyReport(monthly);
+  const ongoingItems = weeklyOngoingItems(data, selectedReport?.week || data.weeklyReview.weekRange).slice(0, 6);
+  const dailyGroups = dailyRecordGroups(data, selectedReport?.week || data.weeklyReview.weekRange);
 
   elements.overview.innerHTML = `
     ${actionHero()}
@@ -538,7 +602,7 @@ function renderOverview(data) {
     <section class="work-grid">
       <article class="zine-panel focus-panel">
         <div class="panel-title-row">
-          <h2><span>Today’s Focus</span></h2>
+          <h2><span>Focus Items</span></h2>
           <button class="text-action" type="button" data-jump-view="tasks">View all tasks</button>
         </div>
         <div class="focus-list">
@@ -549,9 +613,11 @@ function renderOverview(data) {
       <aside class="side-stack">
         <article class="zine-panel notes-panel">
           <div class="panel-title-row">
-            <h2><span>Latest Notes</span></h2>
+            <h2><span>This Week Ongoing</span></h2>
           </div>
-          ${listText(latestDaily.completedWork || latestDaily.followUps || latestDaily.notes)}
+          <div class="ongoing-list">
+            ${ongoingItems.length ? ongoingItems.map(ongoingCard).join("") : '<p class="empty">No weekly ongoing items captured yet.</p>'}
+          </div>
         </article>
 
         <article class="zine-panel draft-panel">
@@ -564,6 +630,17 @@ function renderOverview(data) {
           <div class="progress-line" aria-hidden="true"><span></span></div>
         </article>
       </aside>
+    </section>
+    <section class="lower-grid">
+      <article class="zine-panel daily-records-panel">
+        <div class="panel-title-row">
+          <h2><span>Daily Records</span></h2>
+          <button class="text-action" type="button" data-jump-view="weekly">Open report</button>
+        </div>
+        <div class="daily-record-list">
+          ${dailyGroups.length ? dailyGroups.map(dailyRecordGroup).join("") : '<p class="empty">No daily records captured for this week yet.</p>'}
+        </div>
+      </article>
     </section>
   `;
 

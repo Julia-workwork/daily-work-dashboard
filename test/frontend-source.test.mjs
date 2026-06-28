@@ -40,7 +40,8 @@ test("browser source contains required Action Zine English labels", async () => 
     "Daily Work",
     "Command Center",
     "Focus Items",
-    "Latest Notes",
+    "This Week Ongoing",
+    "Daily Records",
     "Weekly Draft",
     "Workload Estimate",
     "Records",
@@ -199,4 +200,14 @@ test("weekly and monthly reporting exposes quantified output details", async () 
   assert.match(source, /Workload Estimate/);
   assert.match(source, /Records/);
   assert.match(source, /Quantified Output/);
+});
+
+test("overview separates weekly ongoing work from daily records", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /weeklyOngoingItems/);
+  assert.match(source, /dailyRecordGroups/);
+  assert.match(source, /This Week Ongoing/);
+  assert.match(source, /Daily Records/);
+  assert.match(source, /<details class="daily-record-group"/);
 });

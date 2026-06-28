@@ -541,6 +541,93 @@ main {
   line-height: 1.65;
 }
 
+.ongoing-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ongoing-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.54);
+  padding: 13px;
+}
+
+.ongoing-item span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.07);
+  color: #525866;
+  font: 750 13px/1 var(--system-font);
+}
+
+.ongoing-item.is-done span {
+  background: rgba(52, 199, 89, 0.16);
+  color: #126b30;
+}
+
+.ongoing-item h3 {
+  color: #1d1d1f;
+  font: 700 15px/1.28 var(--system-font);
+}
+
+.ongoing-item p {
+  margin-top: 5px;
+  color: #687183;
+  font: 600 12px/1.35 var(--system-font);
+}
+
+.daily-record-list {
+  display: grid;
+  gap: 10px;
+}
+
+.daily-record-group {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 14px 16px;
+}
+
+.daily-record-group summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.daily-record-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.daily-record-group summary span {
+  color: #1d1d1f;
+  font: 750 16px/1.2 var(--system-font);
+}
+
+.daily-record-group summary strong {
+  color: #687183;
+  font: 650 13px/1.2 var(--system-font);
+}
+
+.daily-record-group ul {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: #3f4652;
+  line-height: 1.55;
+}
+
 .draft-panel p {
   margin-top: 8px;
   line-height: 1.55;
