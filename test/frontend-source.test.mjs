@@ -169,6 +169,16 @@ test("weekly executive summary cleans and groups raw records before display", as
   assert.match(lineReportBlock, /!isWaitingOrTbdItem\(item\)/);
 });
 
+test("weekly executive summary formats grouped records as readable bullets", async () => {
+  const source = await read("../static/app.js");
+  const summaryBlock = source.match(/function summarizeReportItems\(items, emptyText\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(summaryBlock, /recordCountLabel/);
+  assert.match(summaryBlock, /values\.map\(\(value\) => `- \$\{value\}`\)/);
+  assert.match(summaryBlock, /\\n\\n/);
+  assert.doesNotMatch(summaryBlock, / - \$\{values\.join/);
+});
+
 test("weekly executive summary can be edited in place", async () => {
   const source = await read("../static/app.js");
 

@@ -345,8 +345,14 @@ function summarizeReportItems(items, emptyText) {
   if (!grouped.size) return emptyText;
 
   return [...grouped.entries()]
-    .map(([label, values]) => `${label}: ${values.length} record${values.length === 1 ? "" : "s"} - ${values.join("；")}`)
-    .join("\n");
+    .map(([label, values]) => {
+      const recordCountLabel = `${values.length} record${values.length === 1 ? "" : "s"}`;
+      return [
+        `${label} (${recordCountLabel})`,
+        ...values.map((value) => `- ${value}`),
+      ].join("\n");
+    })
+    .join("\n\n");
 }
 
 function isOngoingRecord(item) {
