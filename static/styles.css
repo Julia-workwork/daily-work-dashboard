@@ -1137,9 +1137,9 @@ select {
   letter-spacing: 0;
 }
 
-.monthly-recap-grid {
+.monthly-recap-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
   gap: 12px;
   margin-top: 20px;
 }
@@ -1223,6 +1223,21 @@ select {
   overflow-wrap: anywhere;
 }
 
+.monthly-summary-panel {
+  margin-top: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.56);
+  padding: 18px;
+}
+
+.monthly-summary-panel h3 {
+  margin-bottom: 10px;
+  color: #1d1d1f;
+  font: 750 18px/1.15 var(--display-font);
+  letter-spacing: -0.012em;
+}
+
 .weekly-report-header {
   display: flex;
   align-items: flex-start;
@@ -1272,13 +1287,55 @@ select {
   letter-spacing: -0.015em;
 }
 
-.weekly-executive-summary ul {
+.summary-edit-list {
   display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.summary-edit-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.58);
+  padding: 14px;
+}
+
+.summary-edit-item label {
+  display: grid;
+  gap: 9px;
+}
+
+.summary-edit-item label span {
+  color: #687183;
+  font: 700 13px/1.2 var(--system-font);
+}
+
+.summary-edit-item textarea {
+  width: 100%;
+  min-height: 92px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(246, 248, 251, 0.72);
+  color: #1d1d1f;
+  padding: 12px 14px;
+  font: 540 15px/1.55 var(--system-font);
+  resize: vertical;
+}
+
+.summary-edit-item textarea:focus {
+  outline: 2px solid rgba(0, 113, 227, 0.28);
+  outline-offset: 2px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.summary-edit-actions {
+  display: grid;
+  justify-items: end;
   gap: 8px;
-  margin: 0;
-  padding-left: 20px;
-  color: #3f4652;
-  line-height: 1.55;
 }
 
 .weekly-report-sections {
@@ -1349,32 +1406,6 @@ select {
   margin-top: 6px;
 }
 
-.editable-weekly-draft {
-  margin-top: 22px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.58);
-  padding: 20px;
-}
-
-.editable-weekly-draft h3 {
-  color: #1d1d1f;
-  font: 750 20px/1.15 var(--display-font);
-  letter-spacing: -0.015em;
-}
-
-.editable-weekly-draft textarea {
-  width: 100%;
-  margin-top: 14px;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.76);
-  color: #1d1d1f;
-  padding: 16px;
-  font: 500 15px/1.55 var(--system-font);
-  resize: vertical;
-}
-
 .weekly-block h2,
 .setting-group h2 {
   margin-bottom: 14px;
@@ -1418,7 +1449,7 @@ select {
   .weekly-grid,
   .settings-grid,
   .weekly-report-sections,
-  .monthly-recap-grid,
+  .monthly-recap-metrics,
   .tag-guide-grid,
   .metric-grid {
     grid-template-columns: 1fr;
@@ -1538,6 +1569,14 @@ select {
 
   .weekly-report-header {
     align-items: flex-start;
+  }
+
+  .summary-edit-item {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-edit-actions {
+    justify-items: start;
   }
 
   .monthly-recap-card {

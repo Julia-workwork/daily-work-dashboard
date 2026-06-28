@@ -449,34 +449,13 @@ function weeklyExecutiveSummary(lines) {
   return lines.map((line) => line.summary);
 }
 
-function weeklyDraftKey(report) {
-  return `daily-work-weekly-draft:${report.week || "current"}`;
+function summaryDraftKey(report, lineTitle) {
+  return `daily-work-weekly-summary:${report.week || "current"}:${lineTitle}`;
 }
 
-function weeklyDraftText(report) {
-  return [
-    `Weekly Report - ${report.week || "Current week"}`,
-    "",
-    "Executive Summary",
-    ...(report.executiveSummary || []).map((item) => `- ${item}`),
-    "",
-    "Cross-functional Progress",
-    ...(report.lines || []).flatMap((line) => [
-      "",
-      line.title,
-      "Quantified Output:",
-      ...(line.quantifiedItems.length ? line.quantifiedItems.map((item) => `- ${item}`) : ["- No completed output captured yet."]),
-      "In Progress:",
-      ...(line.progressItems.length ? line.progressItems.map((item) => `- ${item}`) : ["- No active progress records captured yet."]),
-      "Waiting / TBD:",
-      ...(line.waitingItems.length ? line.waitingItems.map((item) => `- ${item}`) : ["- No waiting or TBD records captured yet."]),
-    ]),
-  ].join("\n");
-}
-
-function savedWeeklyDraft(report) {
+function savedSummaryText(report, lineTitle) {
   try {
-    return localStorage.getItem(weeklyDraftKey(report)) || "";
+    return localStorage.getItem(summaryDraftKey(report, lineTitle)) || "";
   } catch {
     return "";
   }
@@ -1246,12 +1225,34 @@ function weeklyLineSection(line) {
   `;
 }
 
+function editableExecutiveSummary(report) {
+  const lines = report.lines || [];
+  if (!lines.length) {
+    return '<p class="muted">No executive summary available yet.</p>';
+  }
+
+  return lines.map((line, index) => {
+    const fallback = line.summary || report.executiveSummary?.[index] || "";
+    const value = savedSummaryText(report, line.title) || fallback;
+    const key = summaryDraftKey(report, line.title);
+
+    return `
+      <article class="summary-edit-item">
+        <label>
+          <span>${escapeHtml(line.title)}</span>
+          <textarea data-summary-line="${escapeHtml(line.title)}" rows="3">${escapeHtml(value)}</textarea>
+        </label>
+        <div class="summary-edit-actions">
+          <button class="text-action" type="button" data-save-summary="${escapeHtml(key)}">Save Summary</button>
+          <p class="task-save-status" data-summary-status></p>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
 function weeklyLeadershipCard(report, index) {
-  const summary = (report.executiveSummary || []).length
-    ? report.executiveSummary.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
-    : "<li>No executive summary available yet.</li>";
   const lineSections = (report.lines || []).map(weeklyLineSection).join("");
-  const draftText = savedWeeklyDraft(report) || weeklyDraftText(report);
 
   return `
     <article class="weekly-report-card">
@@ -1268,21 +1269,13 @@ function weeklyLeadershipCard(report, index) {
       </div>
       <section class="weekly-executive-summary">
         <h3>Executive Summary</h3>
-        <ul>${summary}</ul>
+        <p class="weekly-report-summary">Auto-generated from this week's records. Edit any line directly when the summary needs correction.</p>
+        <div class="summary-edit-list">${editableExecutiveSummary(report)}</div>
       </section>
       <div class="weekly-report-sections">
         <h3 class="weekly-section-title">Cross-functional Progress</h3>
         ${lineSections}
       </div>
-      <section class="editable-weekly-draft">
-        <div class="panel-title-row">
-          <h3>Editable Weekly Draft</h3>
-          <button class="text-action" type="button" data-save-weekly-draft="${escapeHtml(weeklyDraftKey(report))}">Save Draft</button>
-        </div>
-        <p class="weekly-report-summary">Auto-generated text is only a starting point. Edit this final draft when the summary needs correction.</p>
-        <textarea data-weekly-draft rows="14">${escapeHtml(draftText)}</textarea>
-        <p class="task-save-status" data-weekly-draft-status></p>
-      </section>
     </article>
   `;
 }
@@ -1309,12 +1302,7 @@ function monthlyRecapCard(monthly) {
         </div>
         <strong><span>Workload Estimate</span>${recap.total}</strong>
       </header>
-      <div class="report-metric-row">
-        <span>Records <strong>${recap.records}</strong></span>
-        <span>Quantified Output <strong>${recap.quantifiedOutput}</strong></span>
-      </div>
-      <p class="weekly-report-summary">This month includes ${recap.weekCount} tracked week${recap.weekCount === 1 ? "" : "s"}. The recap is organized for reporting: records, quantified output, ongoing projects, and a leadership-ready summary.</p>
-      <div class="monthly-recap-grid">
+      <div class="monthly-recap-metrics">
         <section class="monthly-recap-item">
           <h3>Records</h3>
           <strong>${recap.records}</strong>
@@ -1323,17 +1311,27 @@ function monthlyRecapCard(monthly) {
         <section class="monthly-recap-item">
           <h3>Quantified Output</h3>
           <strong>${recap.quantifiedOutput}</strong>
-          ${list(recap.quantifiedItems, "No quantified output detected yet.")}
+          <p>Estimated concrete deliverables detected from your notes.</p>
         </section>
         <section class="monthly-recap-item">
           <h3>Ongoing Projects</h3>
-          ${list(recap.ongoingProjects, "No weekly ongoing projects captured yet.")}
-        </section>
-        <section class="monthly-recap-item leadership-summary-item">
-          <h3>Leadership Summary</h3>
-          ${list(recap.leadershipSummary, "No summary-ready records captured yet.")}
+          <strong>${recap.ongoingProjects.length}</strong>
+          <p>Projects or workstreams repeatedly moved during the month.</p>
         </section>
       </div>
+      <p class="weekly-report-summary">This month includes ${recap.weekCount} tracked week${recap.weekCount === 1 ? "" : "s"}. The recap is organized for reporting: records, quantified output, ongoing projects, and a leadership-ready summary.</p>
+      <section class="monthly-summary-panel">
+        <h3>Leadership Summary</h3>
+        ${list(recap.leadershipSummary, "No summary-ready records captured yet.")}
+      </section>
+      <section class="monthly-summary-panel">
+        <h3>Ongoing Projects</h3>
+        ${list(recap.ongoingProjects, "No weekly ongoing projects captured yet.")}
+      </section>
+      <section class="monthly-summary-panel">
+        <h3>Quantified Output Details</h3>
+        ${list(recap.quantifiedItems, "No quantified output detected yet.")}
+      </section>
     </article>
   `;
 }
@@ -1391,21 +1389,23 @@ function renderWeekly(data) {
     state.selectedWeek = event.target.value;
     renderWeekly(data);
   });
-  bindWeeklyDraftEditor();
+  bindExecutiveSummaryEditor();
 }
 
-function bindWeeklyDraftEditor() {
-  const textarea = elements.weekly.querySelector("[data-weekly-draft]");
-  const button = elements.weekly.querySelector("[data-save-weekly-draft]");
-  const status = elements.weekly.querySelector("[data-weekly-draft-status]");
-  button?.addEventListener("click", () => {
-    if (!textarea) return;
-    try {
-      localStorage.setItem(button.dataset.saveWeeklyDraft, textarea.value);
-      if (status) status.textContent = "Draft saved in this browser.";
-    } catch {
-      if (status) status.textContent = "Could not save this draft in the browser.";
-    }
+function bindExecutiveSummaryEditor() {
+  elements.weekly.querySelectorAll("[data-save-summary]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const item = button.closest(".summary-edit-item");
+      const textarea = item?.querySelector("[data-summary-line]");
+      const status = item?.querySelector("[data-summary-status]");
+      if (!textarea) return;
+      try {
+        localStorage.setItem(button.dataset.saveSummary, textarea.value);
+        if (status) status.textContent = "Summary saved in this browser.";
+      } catch {
+        if (status) status.textContent = "Could not save this summary in the browser.";
+      }
+    });
   });
 }
 

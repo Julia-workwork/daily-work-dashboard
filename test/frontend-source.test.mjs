@@ -140,15 +140,15 @@ test("weekly report keeps each business line as the primary grouping", async () 
   assert.match(source, /Cross-functional Progress/);
 });
 
-test("weekly report includes an editable final draft layer", async () => {
+test("weekly executive summary can be edited in place", async () => {
   const source = await read("../static/app.js");
 
-  assert.match(source, /Editable Weekly Draft/);
-  assert.match(source, /weeklyDraftText/);
-  assert.match(source, /bindWeeklyDraftEditor/);
-  assert.match(source, /data-weekly-draft/);
-  assert.match(source, /data-save-weekly-draft/);
+  assert.match(source, /editableExecutiveSummary/);
+  assert.match(source, /bindExecutiveSummaryEditor/);
+  assert.match(source, /data-summary-line/);
+  assert.match(source, /data-save-summary/);
   assert.match(source, /localStorage\.setItem/);
+  assert.doesNotMatch(source, /Editable Weekly Draft/);
 });
 
 test("weekly report recognizes short workflow tag aliases", async () => {
@@ -188,6 +188,9 @@ test("monthly recap shows every concrete item in collapsible lists", async () =>
   assert.match(monthlyRecapBlock, /Quantified Output/);
   assert.match(monthlyRecapBlock, /Ongoing Projects/);
   assert.match(monthlyRecapBlock, /Leadership Summary/);
+  assert.match(monthlyRecapBlock, /Quantified Output Details/);
+  assert.match(monthlyRecapBlock, /monthly-recap-metrics/);
+  assert.match(monthlyRecapBlock, /monthly-summary-panel/);
   assert.match(monthlyRecapBlock, /monthly-recap-list/);
   assert.match(monthlyRecapBlock, /list\(recap\.ongoingProjects/);
   assert.match(monthlyRecapBlock, /list\(recap\.leadershipSummary/);
