@@ -119,13 +119,24 @@ test("weekly report renders one selected week with a week filter", async () => {
 test("weekly report uses Julia workflow sections instead of generic report buckets", async () => {
   const source = await read("../static/app.js");
 
-  for (const label of ["Product Line", "Brand", "IMC", "Julia’s Initiative", "Next Moves", "[TBD]"]) {
+  for (const label of ["Product Line", "Brand", "IMC", "Executive Summary", "Cross-functional Progress", "Quantified Output", "In Progress", "Waiting / TBD", "[TBD]"]) {
     assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
 
   for (const oldLabel of ["量化产出", "跨部门协作", "待协调事项"]) {
     assert.doesNotMatch(source, new RegExp(oldLabel));
   }
+});
+
+test("weekly report keeps each business line as the primary grouping", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /weeklyExecutiveSummary/);
+  assert.match(source, /weeklyLineSection/);
+  assert.match(source, /line\.quantifiedItems/);
+  assert.match(source, /line\.progressItems/);
+  assert.match(source, /line\.waitingItems/);
+  assert.match(source, /Cross-functional Progress/);
 });
 
 test("weekly report recognizes short workflow tag aliases", async () => {

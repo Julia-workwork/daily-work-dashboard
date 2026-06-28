@@ -68,6 +68,24 @@ const WORKFLOW_TAG_GROUPS = [
   },
 ];
 
+const REPORT_LINES = [
+  {
+    title: "Product Line",
+    tags: ["Product Line", "User Issue"],
+    keywords: /产品|功能|固件|firmware|beta|APRS|Message|HA2|H1|需求|研发|PM|测试|User Issue|用户|问题|RV\d+|RT\d+|LR\d+/i,
+  },
+  {
+    title: "Brand",
+    tags: ["Brand", "Content"],
+    keywords: /品牌|社媒|social|post|YouTube|TikTok|blog|博客|图片|素材|活动|展会|KOC|KOL|美工|数据指标|粉丝/i,
+  },
+  {
+    title: "IMC",
+    tags: ["IMC"],
+    keywords: /IMC|汇报|用户标签|标签|洞察|PPT|排期|对齐|传播|文件更新/i,
+  },
+];
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -323,6 +341,23 @@ function itemMatches(item, tags, keywords) {
   return hasReportTag(item, tags) || keywords.test(item.text);
 }
 
+function hasAnyTag(item, tags) {
+  return hasReportTag(item, tags);
+}
+
+function isWaitingOrTbdItem(item) {
+  return hasAnyTag(item, ["TBD", "Waiting"]) || /TBD|waiting|wait|等待|待确认|待完成|待跟进|待同步|待提交|待刷新|待更新|待重新/i.test(item.text);
+}
+
+function isProgressItem(item) {
+  if (isWaitingOrTbdItem(item)) return false;
+  return hasAnyTag(item, ["Progress"]) || (!item.done && !hasAnyTag(item, ["Plan", "Idea"]));
+}
+
+function isQuantifiedOutputItem(item) {
+  return item.done || hasAnyTag(item, ["Output", "Done"]) || explicitQuantity(item.text) > 0;
+}
+
 function reportSection(title, items) {
   const uniqueItems = uniqueReportItems(items.map((item) => displayReportText(item.text))).slice(0, 6);
   const quantifiedItems = uniqueReportItems(
@@ -341,15 +376,9 @@ function reportSection(title, items) {
 }
 
 function workflowSections(items) {
-  const productLine = items.filter((item) =>
-    itemMatches(item, ["Product Line", "User Issue"], /产品|功能|固件|firmware|beta|APRS|Message|HA2|H1|需求|研发|PM|测试|User Issue|用户|问题|RV\d+|RT\d+|LR\d+/i),
-  );
-  const brand = items.filter((item) =>
-    itemMatches(item, ["Brand", "Content"], /品牌|社媒|social|post|YouTube|TikTok|blog|博客|图片|素材|活动|展会|KOC|KOL|美工|数据指标|粉丝/i),
-  );
-  const imc = items.filter((item) =>
-    itemMatches(item, ["IMC"], /IMC|汇报|用户标签|标签|洞察|PPT|排期|对齐|传播|文件更新/i),
-  );
+  const productLine = items.filter((item) => itemMatches(item, REPORT_LINES[0].tags, REPORT_LINES[0].keywords));
+  const brand = items.filter((item) => itemMatches(item, REPORT_LINES[1].tags, REPORT_LINES[1].keywords));
+  const imc = items.filter((item) => itemMatches(item, REPORT_LINES[2].tags, REPORT_LINES[2].keywords));
   const julia = items.filter((item) => hasReportTag(item, ["JULIA"]));
   const nextMoves = items.filter(
     (item) => hasReportTag(item, ["Plan", "Idea", "TBD"]) || (!item.done && !hasReportTag(item, ["JULIA"])),
@@ -362,6 +391,46 @@ function workflowSections(items) {
     reportSection("Julia’s Initiative", julia),
     reportSection("Next Moves", nextMoves),
   ];
+}
+
+function lineReport(line, items) {
+  const lineItems = items.filter((item) => itemMatches(item, line.tags, line.keywords));
+  const quantifiedItems = uniqueReportItems(
+    lineItems
+      .filter(isQuantifiedOutputItem)
+      .map((item) => displayReportText(item.text)),
+  ).slice(0, 6);
+  const progressItems = uniqueReportItems(
+    lineItems
+      .filter(isProgressItem)
+      .map((item) => displayReportText(item.text)),
+  ).slice(0, 6);
+  const waitingItems = uniqueReportItems(
+    lineItems
+      .filter(isWaitingOrTbdItem)
+      .map((item) => displayReportText(item.text)),
+  ).slice(0, 6);
+  const quantifiedOutput = lineItems.reduce((sum, item) => sum + explicitQuantity(item.text), 0);
+  const focus = quantifiedItems[0] || progressItems[0] || waitingItems[0] || "No major records captured yet.";
+  const summaryParts = [
+    quantifiedOutput ? `${quantifiedOutput} quantified output` : `${lineItems.length} records`,
+    progressItems.length ? `${progressItems.length} in progress` : "",
+    waitingItems.length ? `${waitingItems.length} waiting/TBD` : "",
+  ].filter(Boolean);
+
+  return {
+    title: line.title,
+    records: lineItems.length,
+    quantifiedOutput,
+    quantifiedItems,
+    progressItems,
+    waitingItems,
+    summary: `${line.title}: ${summaryParts.join(", ")}. ${focus}`,
+  };
+}
+
+function weeklyExecutiveSummary(lines) {
+  return lines.map((line) => line.summary);
 }
 
 function latestReportMonth(data) {
@@ -400,6 +469,13 @@ function leadershipWeekReport(week, items, weekly) {
     ...items.filter((item) => !item.done).flatMap((item) => splitText(item.text)),
   ]).slice(0, 4);
 
+  const reportItems = [
+    ...items,
+    ...openFollowUps.map((text) => ({ text: `[TBD] ${text}`, done: false })),
+    ...splitText(weekly.nextWeekPlan).map((text) => ({ text: `[Plan] ${text}`, done: false })),
+  ];
+  const lines = REPORT_LINES.map((line) => lineReport(line, reportItems));
+
   return {
     week,
     startDate: items.map((item) => item.date).filter(Boolean).sort()[0] || "",
@@ -412,11 +488,9 @@ function leadershipWeekReport(week, items, weekly) {
         .map((item) => `${displayReportText(item.text)} (${explicitQuantity(item.text)})`),
     ),
     items,
-    sections: workflowSections([
-      ...items,
-      ...openFollowUps.map((text) => ({ text: `[TBD] ${text}`, done: false })),
-      ...splitText(weekly.nextWeekPlan).map((text) => ({ text: `[Plan] ${text}`, done: false })),
-    ]),
+    lines,
+    executiveSummary: weeklyExecutiveSummary(lines),
+    sections: workflowSections(reportItems),
   };
 }
 
@@ -1094,20 +1168,40 @@ function weeklyBlock(title, value) {
   `;
 }
 
+function weeklyList(items, empty) {
+  return `<ul>${items.length ? items.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : `<li>${escapeHtml(empty)}</li>`}</ul>`;
+}
+
+function weeklyLineSection(line) {
+  return `
+    <section class="weekly-line-section">
+      <header>
+        <h3>${escapeHtml(line.title)}</h3>
+        <span class="section-count">${line.records}</span>
+      </header>
+      <div class="weekly-line-grid">
+        <div>
+          <h4>Quantified Output</h4>
+          ${weeklyList(line.quantifiedItems, "No completed output captured yet.")}
+        </div>
+        <div>
+          <h4>In Progress</h4>
+          ${weeklyList(line.progressItems, "No active progress records captured yet.")}
+        </div>
+        <div>
+          <h4>Waiting / TBD</h4>
+          ${weeklyList(line.waitingItems, "No waiting or TBD records captured yet.")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function weeklyLeadershipCard(report, index) {
-  const sections = report.sections
-    .map((section) => {
-      const list = section.items.length
-        ? section.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
-        : "<li>No tagged records yet.</li>";
-      return `
-        <section>
-          <h3>${escapeHtml(section.title)} <span class="section-count">${section.total}</span></h3>
-          <ul>${list}</ul>
-        </section>
-      `;
-    })
-    .join("");
+  const summary = (report.executiveSummary || []).length
+    ? report.executiveSummary.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
+    : "<li>No executive summary available yet.</li>";
+  const lineSections = (report.lines || []).map(weeklyLineSection).join("");
 
   return `
     <article class="weekly-report-card">
@@ -1122,14 +1216,13 @@ function weeklyLeadershipCard(report, index) {
         <span>Records <strong>${report.records}</strong></span>
         <span>Quantified Output <strong>${report.quantifiedOutput}</strong></span>
       </div>
-      <p class="weekly-report-summary">This report is organized by Julia’s real workflow: Product Line, Brand, and IMC first, with quantified work embedded in each section. [JULIA], [Plan], [Idea], and [TBD] are separated so personal initiative and pending work stay visible.</p>
-      ${
-        report.quantifiedItems.length
-          ? `<section class="quantified-output-block"><h3>Quantified Output Details</h3><ul>${report.quantifiedItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>`
-          : ""
-      }
+      <section class="weekly-executive-summary">
+        <h3>Executive Summary</h3>
+        <ul>${summary}</ul>
+      </section>
       <div class="weekly-report-sections">
-        ${sections}
+        <h3 class="weekly-section-title">Cross-functional Progress</h3>
+        ${lineSections}
       </div>
     </article>
   `;
