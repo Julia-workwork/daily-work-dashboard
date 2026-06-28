@@ -358,8 +358,8 @@ function isQuantifiedOutputItem(item) {
   return item.done || hasAnyTag(item, ["Output", "Done"]) || explicitQuantity(item.text) > 0;
 }
 
-function compactItems(items, limit = 2) {
-  return items.slice(0, limit).join("；");
+function formatSummaryList(items, emptyText) {
+  return items.length ? items.join("；") : emptyText;
 }
 
 function reportSection(title, items) {
@@ -403,23 +403,18 @@ function lineReport(line, items) {
     lineItems
       .filter(isQuantifiedOutputItem)
       .map((item) => displayReportText(item.text)),
-  ).slice(0, 6);
+  );
   const progressItems = uniqueReportItems(
     lineItems
       .filter(isProgressItem)
       .map((item) => displayReportText(item.text)),
-  ).slice(0, 6);
+  );
   const waitingItems = uniqueReportItems(
     lineItems
       .filter(isWaitingOrTbdItem)
       .map((item) => displayReportText(item.text)),
-  ).slice(0, 6);
+  );
   const quantifiedOutput = lineItems.reduce((sum, item) => sum + explicitQuantity(item.text), 0);
-  const focus = compactItems(quantifiedItems, 2) || compactItems(progressItems, 2) || compactItems(waitingItems, 2) || "No major records captured yet.";
-  const statusText = [
-    progressItems.length ? `${progressItems.length} items in progress` : "",
-    waitingItems.length ? `${waitingItems.length} waiting/TBD` : "",
-  ].filter(Boolean).join("; ");
 
   return {
     title: line.title,
@@ -431,8 +426,9 @@ function lineReport(line, items) {
     summary: lineSummaryText(line.title, {
       records: lineItems.length,
       quantifiedOutput,
-      focus,
-      statusText,
+      quantifiedItems,
+      progressItems,
+      waitingItems,
     }),
   };
 }
@@ -441,8 +437,12 @@ function lineSummaryText(title, details) {
   const output = details.quantifiedOutput
     ? `${details.quantifiedOutput} quantified output`
     : `${details.records} tracked records`;
-  const status = details.statusText ? ` Current status: ${details.statusText}.` : "";
-  return `${title}: ${output}. Key work: ${details.focus}.${status}`;
+  return [
+    `${title}: ${details.records} records, ${output}.`,
+    `Key Completed Work: ${formatSummaryList(details.quantifiedItems, "No completed output captured yet.")}.`,
+    `In Progress: ${formatSummaryList(details.progressItems, "No active progress records captured yet.")}.`,
+    `Waiting / TBD: ${formatSummaryList(details.waitingItems, "No waiting or TBD records captured yet.")}.`,
+  ].join("\n");
 }
 
 function weeklyExecutiveSummary(lines) {
@@ -1240,7 +1240,7 @@ function editableExecutiveSummary(report) {
       <article class="summary-edit-item">
         <label>
           <span>${escapeHtml(line.title)}</span>
-          <textarea data-summary-line="${escapeHtml(line.title)}" rows="3">${escapeHtml(value)}</textarea>
+          <textarea data-summary-line="${escapeHtml(line.title)}" rows="7">${escapeHtml(value)}</textarea>
         </label>
         <div class="summary-edit-actions">
           <button class="text-action" type="button" data-save-summary="${escapeHtml(key)}">Save Summary</button>

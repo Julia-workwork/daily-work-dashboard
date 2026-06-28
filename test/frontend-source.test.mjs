@@ -140,6 +140,19 @@ test("weekly report keeps each business line as the primary grouping", async () 
   assert.match(source, /Cross-functional Progress/);
 });
 
+test("weekly executive summary includes all line items instead of samples", async () => {
+  const source = await read("../static/app.js");
+  const lineReportBlock = source.match(/function lineReport\(line, items\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const lineSummaryBlock = source.match(/function lineSummaryText\(title, details\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(lineSummaryBlock, /Key Completed Work/);
+  assert.match(lineSummaryBlock, /In Progress/);
+  assert.match(lineSummaryBlock, /Waiting \/ TBD/);
+  assert.match(lineSummaryBlock, /formatSummaryList/);
+  assert.doesNotMatch(lineReportBlock, /\.slice\(0,\s*6\)/);
+  assert.doesNotMatch(lineReportBlock, /compactItems/);
+});
+
 test("weekly executive summary can be edited in place", async () => {
   const source = await read("../static/app.js");
 
