@@ -1071,7 +1071,7 @@ async function saveTaskEdit(task) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(task),
   });
-  const payload = await response.json().catch(() => ({}));
+  const payload = await response.clone().json().catch(async () => ({ error: await response.text().catch(() => "") }));
   if (!response.ok) {
     throw new Error(payload.error || "Could not update this item in Notion.");
   }

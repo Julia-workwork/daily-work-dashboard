@@ -20,7 +20,7 @@ test("buildNotionTaskPayload maps dashboard task fields to Workflow Tasks proper
     Category: { select: { name: "Content" } },
     "Due Date": { date: { start: "2026-06-22" } },
     "Next Action": { rich_text: [{ text: { content: "检查字幕并发布 YouTube" } }] },
-    Review: { checkbox: true },
+    "Needs Review": { checkbox: true },
   });
 });
 
@@ -62,5 +62,5 @@ test("createNotionTask posts a new page to the configured Notion data source", a
   assert.equal(body.parent.data_source_id, "abc123");
   assert.equal(body.properties["Task Name"].title[0].text.content, "整理 IMC 用户标签反馈");
   assert.equal(body.properties.Status.status.name, "Not started");
-  assert.equal(body.properties.Review.checkbox, false);
+  assert.equal(body.properties["Needs Review"].checkbox, false);
 });
