@@ -358,6 +358,10 @@ function isQuantifiedOutputItem(item) {
   return item.done || hasAnyTag(item, ["Output", "Done"]) || explicitQuantity(item.text) > 0;
 }
 
+function compactItems(items, limit = 2) {
+  return items.slice(0, limit).join("；");
+}
+
 function reportSection(title, items) {
   const uniqueItems = uniqueReportItems(items.map((item) => displayReportText(item.text))).slice(0, 6);
   const quantifiedItems = uniqueReportItems(
@@ -411,12 +415,11 @@ function lineReport(line, items) {
       .map((item) => displayReportText(item.text)),
   ).slice(0, 6);
   const quantifiedOutput = lineItems.reduce((sum, item) => sum + explicitQuantity(item.text), 0);
-  const focus = quantifiedItems[0] || progressItems[0] || waitingItems[0] || "No major records captured yet.";
-  const summaryParts = [
-    quantifiedOutput ? `${quantifiedOutput} quantified output` : `${lineItems.length} records`,
-    progressItems.length ? `${progressItems.length} in progress` : "",
+  const focus = compactItems(quantifiedItems, 2) || compactItems(progressItems, 2) || compactItems(waitingItems, 2) || "No major records captured yet.";
+  const statusText = [
+    progressItems.length ? `${progressItems.length} items in progress` : "",
     waitingItems.length ? `${waitingItems.length} waiting/TBD` : "",
-  ].filter(Boolean);
+  ].filter(Boolean).join("; ");
 
   return {
     title: line.title,
@@ -425,12 +428,58 @@ function lineReport(line, items) {
     quantifiedItems,
     progressItems,
     waitingItems,
-    summary: `${line.title}: ${summaryParts.join(", ")}. ${focus}`,
+    summary: lineSummaryText(line.title, {
+      records: lineItems.length,
+      quantifiedOutput,
+      focus,
+      statusText,
+    }),
   };
+}
+
+function lineSummaryText(title, details) {
+  const output = details.quantifiedOutput
+    ? `${details.quantifiedOutput} quantified output`
+    : `${details.records} tracked records`;
+  const status = details.statusText ? ` Current status: ${details.statusText}.` : "";
+  return `${title}: ${output}. Key work: ${details.focus}.${status}`;
 }
 
 function weeklyExecutiveSummary(lines) {
   return lines.map((line) => line.summary);
+}
+
+function weeklyDraftKey(report) {
+  return `daily-work-weekly-draft:${report.week || "current"}`;
+}
+
+function weeklyDraftText(report) {
+  return [
+    `Weekly Report - ${report.week || "Current week"}`,
+    "",
+    "Executive Summary",
+    ...(report.executiveSummary || []).map((item) => `- ${item}`),
+    "",
+    "Cross-functional Progress",
+    ...(report.lines || []).flatMap((line) => [
+      "",
+      line.title,
+      "Quantified Output:",
+      ...(line.quantifiedItems.length ? line.quantifiedItems.map((item) => `- ${item}`) : ["- No completed output captured yet."]),
+      "In Progress:",
+      ...(line.progressItems.length ? line.progressItems.map((item) => `- ${item}`) : ["- No active progress records captured yet."]),
+      "Waiting / TBD:",
+      ...(line.waitingItems.length ? line.waitingItems.map((item) => `- ${item}`) : ["- No waiting or TBD records captured yet."]),
+    ]),
+  ].join("\n");
+}
+
+function savedWeeklyDraft(report) {
+  try {
+    return localStorage.getItem(weeklyDraftKey(report)) || "";
+  } catch {
+    return "";
+  }
 }
 
 function latestReportMonth(data) {
@@ -1202,6 +1251,7 @@ function weeklyLeadershipCard(report, index) {
     ? report.executiveSummary.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
     : "<li>No executive summary available yet.</li>";
   const lineSections = (report.lines || []).map(weeklyLineSection).join("");
+  const draftText = savedWeeklyDraft(report) || weeklyDraftText(report);
 
   return `
     <article class="weekly-report-card">
@@ -1224,6 +1274,15 @@ function weeklyLeadershipCard(report, index) {
         <h3 class="weekly-section-title">Cross-functional Progress</h3>
         ${lineSections}
       </div>
+      <section class="editable-weekly-draft">
+        <div class="panel-title-row">
+          <h3>Editable Weekly Draft</h3>
+          <button class="text-action" type="button" data-save-weekly-draft="${escapeHtml(weeklyDraftKey(report))}">Save Draft</button>
+        </div>
+        <p class="weekly-report-summary">Auto-generated text is only a starting point. Edit this final draft when the summary needs correction.</p>
+        <textarea data-weekly-draft rows="14">${escapeHtml(draftText)}</textarea>
+        <p class="task-save-status" data-weekly-draft-status></p>
+      </section>
     </article>
   `;
 }
@@ -1331,6 +1390,22 @@ function renderWeekly(data) {
   elements.weekly.querySelector("[data-week-filter]")?.addEventListener("change", (event) => {
     state.selectedWeek = event.target.value;
     renderWeekly(data);
+  });
+  bindWeeklyDraftEditor();
+}
+
+function bindWeeklyDraftEditor() {
+  const textarea = elements.weekly.querySelector("[data-weekly-draft]");
+  const button = elements.weekly.querySelector("[data-save-weekly-draft]");
+  const status = elements.weekly.querySelector("[data-weekly-draft-status]");
+  button?.addEventListener("click", () => {
+    if (!textarea) return;
+    try {
+      localStorage.setItem(button.dataset.saveWeeklyDraft, textarea.value);
+      if (status) status.textContent = "Draft saved in this browser.";
+    } catch {
+      if (status) status.textContent = "Could not save this draft in the browser.";
+    }
   });
 }
 

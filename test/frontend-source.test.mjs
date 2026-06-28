@@ -132,11 +132,23 @@ test("weekly report keeps each business line as the primary grouping", async () 
   const source = await read("../static/app.js");
 
   assert.match(source, /weeklyExecutiveSummary/);
+  assert.match(source, /lineSummaryText/);
   assert.match(source, /weeklyLineSection/);
   assert.match(source, /line\.quantifiedItems/);
   assert.match(source, /line\.progressItems/);
   assert.match(source, /line\.waitingItems/);
   assert.match(source, /Cross-functional Progress/);
+});
+
+test("weekly report includes an editable final draft layer", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /Editable Weekly Draft/);
+  assert.match(source, /weeklyDraftText/);
+  assert.match(source, /bindWeeklyDraftEditor/);
+  assert.match(source, /data-weekly-draft/);
+  assert.match(source, /data-save-weekly-draft/);
+  assert.match(source, /localStorage\.setItem/);
 });
 
 test("weekly report recognizes short workflow tag aliases", async () => {

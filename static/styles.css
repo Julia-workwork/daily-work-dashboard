@@ -1349,6 +1349,32 @@ select {
   margin-top: 6px;
 }
 
+.editable-weekly-draft {
+  margin-top: 22px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.58);
+  padding: 20px;
+}
+
+.editable-weekly-draft h3 {
+  color: #1d1d1f;
+  font: 750 20px/1.15 var(--display-font);
+  letter-spacing: -0.015em;
+}
+
+.editable-weekly-draft textarea {
+  width: 100%;
+  margin-top: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #1d1d1f;
+  padding: 16px;
+  font: 500 15px/1.55 var(--system-font);
+  resize: vertical;
+}
+
 .weekly-block h2,
 .setting-group h2 {
   margin-bottom: 14px;
