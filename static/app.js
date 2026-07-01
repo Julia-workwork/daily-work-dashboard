@@ -123,6 +123,14 @@ function allTasks(data) {
   return [...state.localTasks, ...data.tasks];
 }
 
+function cleanInputDate(value) {
+  const text = String(value || "").trim().replaceAll("/", "-");
+  const match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) return text;
+  const [, year, month, day] = match;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
 function taskFromForm(form) {
   const formData = new FormData(form);
   return {
@@ -131,7 +139,7 @@ function taskFromForm(form) {
     category: String(formData.get("category") || "").trim() || "Other",
     priority: String(formData.get("priority") || "P2"),
     status: String(formData.get("status") || "Not started"),
-    dueDate: String(formData.get("dueDate") || ""),
+    dueDate: cleanInputDate(formData.get("dueDate")),
     sourceDate: todayIso(),
     completedDate: "",
     needsReview: formData.get("needsReview") === "on",
@@ -139,15 +147,16 @@ function taskFromForm(form) {
 }
 
 function taskFromEditForm(form, original = {}) {
+  const formData = new FormData(form);
   return {
     ...original,
-    taskName: String(new FormData(form).get("taskName") || "").trim(),
-    nextAction: String(new FormData(form).get("nextAction") || "").trim(),
-    category: String(new FormData(form).get("category") || "").trim() || "Other",
-    priority: String(new FormData(form).get("priority") || "P2"),
-    status: String(new FormData(form).get("status") || "Not Started"),
-    dueDate: String(new FormData(form).get("dueDate") || ""),
-    needsReview: new FormData(form).get("needsReview") === "on",
+    taskName: String(formData.get("taskName") || "").trim(),
+    nextAction: String(formData.get("nextAction") || "").trim(),
+    category: String(formData.get("category") || "").trim() || "Other",
+    priority: String(formData.get("priority") || "P2"),
+    status: String(formData.get("status") || "Not Started"),
+    dueDate: cleanInputDate(formData.get("dueDate")),
+    needsReview: formData.get("needsReview") === "on",
   };
 }
 
@@ -194,7 +203,7 @@ function findTaskByKey(data, key) {
 }
 
 function cleanTaskText(text) {
-  return displayReportText(text).replace(/\\+(\[)/g, "$1");
+  return displayReportText(text);
 }
 
 function dateMonth(value) {
@@ -302,7 +311,9 @@ function hasReportTag(item, tags) {
 
 function displayReportText(text) {
   return String(text || "")
-    .replace(/\\?\[[^\]\\]+\\?\]\s*/g, "")
+    .replace(/\\+\[/g, "[")
+    .replace(/\\+\]/g, "]")
+    .replace(/\[[^\]]+\]\s*/g, "")
     .replace(/^\\+/, "")
     .trim();
 }
@@ -717,12 +728,14 @@ function actionHero() {
 }
 
 function taskRow(task, index) {
+  const taskTitle = cleanTaskText(task.taskName || "Untitled task") || "Untitled task";
+  const taskDetail = cleanTaskText(task.nextAction || task.category || "Confirm next action") || "Confirm next action";
   return `
     <article class="focus-row">
       <span class="row-index">${String(index + 1).padStart(2, "0")}</span>
       <div class="focus-copy">
-        <h3>${escapeHtml(task.taskName || "Untitled task")}</h3>
-        <p>${escapeHtml(task.nextAction || task.category || "Confirm next action")}</p>
+        <h3>${escapeHtml(taskTitle)}</h3>
+        <p>${escapeHtml(taskDetail)}</p>
       </div>
       <div class="focus-stamps">${taskStatusChips(task)}</div>
       <button class="text-action row-edit-action" type="button" data-edit-task="${taskKey(task)}">Edit</button>
@@ -1116,7 +1129,7 @@ function fillTaskEditForm(form, task) {
   form.elements.taskName.value = task.taskName || "";
   form.elements.nextAction.value = task.nextAction || "";
   form.elements.category.value = task.category || "Other";
-  form.elements.dueDate.value = task.dueDate || "";
+  form.elements.dueDate.value = cleanInputDate(task.dueDate);
   form.elements.priority.value = task.priority || "P2";
   form.elements.status.value = task.status || "Not Started";
   form.elements.needsReview.checked = Boolean(task.needsReview);

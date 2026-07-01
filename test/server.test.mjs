@@ -242,6 +242,24 @@ test("PATCH /api/notion/tasks updates an existing Workflow Tasks row", async () 
   assert.equal(calls[0].task.taskName, "Updated task");
 });
 
+test("PATCH /api/notion/tasks returns the real API validation error", async () => {
+  const server = createAppServer({
+    notionToken: "secret-token",
+  });
+
+  const response = await request(server, "/api/notion/tasks", {
+    method: "PATCH",
+    body: JSON.stringify({
+      taskName: "Missing page id",
+      status: "Done",
+    }),
+  });
+  const payload = response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(payload.error, "Notion task page id is required.");
+});
+
 test("PATCH /api/notion/daily-work updates an editable Daily Work source record", async () => {
   const calls = [];
   const server = createAppServer({

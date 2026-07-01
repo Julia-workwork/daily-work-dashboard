@@ -236,6 +236,10 @@ export function createAppServer(options = {}) {
       send(res, 200, content, mimeTypes[extname(filePath)] || "application/octet-stream");
     } catch (error) {
       if (error && typeof error === "object" && error.statusCode === 400) {
+        if (req.url && req.url.startsWith("/api/")) {
+          sendJson(res, 400, { error: error instanceof Error ? error.message : "Bad request" });
+          return;
+        }
         send(res, 400, "Bad request");
         return;
       }

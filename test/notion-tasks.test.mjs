@@ -24,6 +24,18 @@ test("buildNotionTaskPayload maps dashboard task fields to Workflow Tasks proper
   });
 });
 
+test("buildNotionTaskPayload normalizes slash date values before sending to Notion", () => {
+  const payload = buildNotionTaskPayload({
+    taskName: "Follow up Message beta user",
+    status: "Not Started",
+    priority: "P2",
+    category: "User Feedback",
+    dueDate: "2026/07/01",
+  });
+
+  assert.equal(payload.properties["Due Date"].date.start, "2026-07-01");
+});
+
 test("createNotionTask posts a new page to the configured Notion data source", async () => {
   const calls = [];
   const result = await createNotionTask(

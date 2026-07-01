@@ -1364,19 +1364,27 @@ select {
 }
 
 .summary-edit-field {
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 16px;
-  background: rgba(246, 248, 251, 0.48);
-  padding: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-left: 4px solid rgba(0, 113, 227, 0.26);
+  border-radius: 18px;
+  background: rgba(246, 248, 251, 0.62);
 }
 
 .summary-edit-item label {
   display: grid;
-  gap: 9px;
 }
 
 .summary-edit-item label span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  width: fit-content;
+  margin: 12px 12px 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
   color: #1d1d1f;
+  padding: 8px 12px;
   font: 760 12px/1.2 var(--system-font);
   text-transform: uppercase;
 }
@@ -1385,13 +1393,19 @@ select {
   width: 100%;
   min-height: 168px;
   border: 0;
-  border-radius: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.76);
   color: #1d1d1f;
-  padding: 14px 16px;
+  padding: 16px 18px;
   font: 520 14px/1.72 var(--system-font);
   resize: vertical;
   white-space: pre-wrap;
+}
+
+.summary-edit-field:first-child textarea {
+  min-height: 96px;
+  font-weight: 600;
 }
 
 .summary-edit-item textarea:focus {
@@ -1546,6 +1560,53 @@ select {
   }
 }
 
+@media (max-width: 720px) {
+  .metric-grid {
+    gap: 10px;
+  }
+
+  .metric-card {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 14px;
+    min-height: 96px;
+    padding: 16px 18px;
+    border-radius: 24px;
+  }
+
+  .metric-icon {
+    width: 44px;
+    font-size: 38px;
+  }
+
+  .metric-card > div {
+    display: contents;
+  }
+
+  .metric-card span,
+  .metric-card p {
+    grid-column: 2;
+  }
+
+  .metric-card span {
+    align-self: end;
+    font-size: 15px;
+  }
+
+  .metric-card p {
+    align-self: start;
+    font-size: 13px;
+  }
+
+  .metric-card strong {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-self: center;
+    margin: 0;
+    font-size: 48px;
+  }
+}
+
 @media (max-width: 560px) {
   .topbar,
   .metric-grid,
@@ -1608,11 +1669,11 @@ select {
   }
 
   .metric-card {
-    min-height: 132px;
+    min-height: 92px;
   }
 
   .metric-card strong {
-    font-size: 66px;
+    font-size: 44px;
   }
 
   .weekly-report-card {

@@ -221,7 +221,9 @@ test("weekly report recognizes short workflow tag aliases", async () => {
 test("weekly report strips escaped Notion tags without leaving slashes", async () => {
   const source = await read("../static/app.js");
 
-  assert.match(source, /replace\(\/\\\\\?\\\[[^/]+\\\\\?\\\]\\s\*\/g/);
+  assert.match(source, /replace\(\s*\/\\\\\+\\\[\/g,\s*"\["\s*\)/);
+  assert.match(source, /replace\(\s*\/\\\\\+\\\]\/g,\s*"\]"\s*\)/);
+  assert.match(source, /replace\(\s*\/\\\[\[\^\\\]\]\+\\\]\\s\*\/g,\s*""\s*\)/);
   assert.match(source, /replace\(\/\^\\\\\+\/,\s*""\)/);
 });
 
@@ -289,6 +291,18 @@ test("tasks page supports week filtering and cleaned tag display", async () => {
   assert.match(source, /state\.filters\.week/);
   assert.match(source, /cleanTaskText/);
   assert.match(source, /displayReportText\(text\)/);
+  assert.match(source, /cleanInputDate/);
+  assert.match(source, /taskTitle = cleanTaskText/);
+  assert.match(source, /taskDetail = cleanTaskText/);
+});
+
+test("escaped source tags are normalized before display", async () => {
+  const source = await read("../static/app.js");
+  const displayReportTextBlock = source.match(/function displayReportText\(text\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(displayReportTextBlock, /replace\(\s*\/\\\\\+\\\[\/g,\s*"\["\s*\)/);
+  assert.match(displayReportTextBlock, /replace\(\s*\/\\\\\+\\\]\/g,\s*"\]"\s*\)/);
+  assert.match(displayReportTextBlock, /replace\(\s*\/\\\[\[\^\\\]\]\+\\\]\\s\*\/g,\s*""\s*\)/);
 });
 
 test("weekly report uses one normalized week label format", async () => {
@@ -307,6 +321,14 @@ test("task table presents direct inline editing controls", async () => {
   assert.match(source, /direct-edit-cell/);
   assert.match(styles, /\.direct-edit-cell/);
   assert.match(styles, /\.inline-task-select/);
+});
+
+test("overview metrics use compact narrow-screen layout", async () => {
+  const styles = await read("../static/styles.css");
+
+  assert.match(styles, /@media \(max-width:\s*720px\)/);
+  assert.match(styles, /\.metric-card\s*\{[\s\S]*grid-template-columns:\s*44px minmax\(0,\s*1fr\) auto/);
+  assert.match(styles, /\.metric-card strong\s*\{[\s\S]*grid-column:\s*3/);
 });
 
 test("weekly and monthly reporting exposes quantified output details", async () => {
