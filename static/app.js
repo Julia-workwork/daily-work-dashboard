@@ -202,6 +202,15 @@ function findTaskByKey(data, key) {
   return allTasks(data).find((task) => taskKey(task) === key);
 }
 
+function canEditTask(task) {
+  return Boolean(task?.sourceId);
+}
+
+function editTaskButton(task, className = "row-edit-action") {
+  if (!canEditTask(task)) return "";
+  return `<button class="text-action ${className}" type="button" data-edit-task="${taskKey(task)}">Edit</button>`;
+}
+
 function cleanTaskText(text) {
   return displayReportText(text);
 }
@@ -738,7 +747,7 @@ function taskRow(task, index) {
         <p>${escapeHtml(taskDetail)}</p>
       </div>
       <div class="focus-stamps">${taskStatusChips(task)}</div>
-      <button class="text-action row-edit-action" type="button" data-edit-task="${taskKey(task)}">Edit</button>
+      ${editTaskButton(task)}
     </article>
   `;
 }
@@ -900,7 +909,7 @@ function filteredTasks(data) {
 }
 
 function inlineSelect(task, field, values) {
-  if (!task.sourceId) {
+  if (!canEditTask(task)) {
     if (field === "priority") return chip(task.priority, priorityClass(task.priority));
     if (field === "status") return chip(task.status, statusClass(task.status));
     return escapeHtml(task[field] || "—");
@@ -939,7 +948,7 @@ function taskTable(tasks, taskPool) {
                     <span>${inlineSelect(task, "status", statusOptions)}</span>
                     <span>${escapeHtml(task.dueDate || "—")}</span>
                     <span>${escapeHtml(cleanTaskText(task.nextAction || "—"))}</span>
-                    <span><button class="text-action compact-action" type="button" data-edit-task="${taskKey(task)}">Edit</button></span>
+                    <span>${editTaskButton(task, "compact-action")}</span>
                   </div>
                 `,
               )
@@ -1084,6 +1093,9 @@ async function saveTaskToNotion(task) {
 }
 
 async function saveTaskEdit(task) {
+  if (!canEditTask(task)) {
+    throw new Error("This item is read-only because it does not have a Notion source id.");
+  }
   const endpoint = task.sourceType === "daily-work" ? "/api/notion/daily-work" : "/api/notion/tasks";
   const response = await fetch(endpoint, {
     method: "PATCH",
@@ -1142,7 +1154,7 @@ function bindEditTaskButtons(data) {
       const dialog = document.querySelector("#task-edit-dialog");
       const form = document.querySelector("#task-edit-form");
       const note = document.querySelector("[data-edit-source-note]");
-      if (!task || !dialog || !form) return;
+      if (!task || !canEditTask(task) || !dialog || !form) return;
       form.dataset.taskKey = taskKey(task);
       fillTaskEditForm(form, task);
       if (note) {

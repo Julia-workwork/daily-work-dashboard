@@ -50,7 +50,7 @@ test("parseDailyWorkMarkdown separates weekly ongoing work from daily records", 
   assert.equal(ongoing.completedWork, "[BR][Output][Done] H1 calllog video 发布 1 条");
   assert.equal(ongoing.followUps, "[PL][Progress][TBD] Message beta function 用户反馈整理");
   assert.equal(ongoing.weeklyReportCandidate, "[BR][Output][Done] H1 calllog video 发布 1 条；[PL][Progress][TBD] Message beta function 用户反馈整理");
-  assert.equal(result.tasks.some((task) => task.taskName.includes("Message beta function 用户反馈整理")), false);
+  assert.equal(result.tasks.some((task) => task.taskName.includes("Message beta function 用户反馈整理")), true);
 });
 
 test("parseDailyWorkMarkdown turns open todos into read-only workflow tasks", () => {
@@ -178,6 +178,67 @@ test("fetchDailyWorkBlocks maps Notion todo blocks into editable daily source ta
 
   assert.equal(source.tasks[1][0], "[PL][TBD] Message 白底图拍摄");
   assert.equal(source.tasks[1][10], "todo-block");
+  assert.equal(source.tasks[1][11], "daily-work");
+});
+
+test("fetchDailyWorkBlocks maps weekly ongoing todo ids into editable source tasks", async () => {
+  const source = await fetchDailyWorkBlocks(
+    {
+      token: "secret",
+      pageId: "daily-page",
+      today: "2026-07-01",
+    },
+    {
+      fetchImpl: async (url) => {
+        if (url === "https://api.notion.com/v1/blocks/daily-page/children?page_size=100") {
+          return {
+            ok: true,
+            json: async () => ({
+              results: [
+                {
+                  id: "week-block",
+                  type: "heading_1",
+                  has_children: true,
+                  heading_1: { rich_text: [{ plain_text: "2026.06.29-2026.07.03" }] },
+                },
+              ],
+            }),
+          };
+        }
+        if (url === "https://api.notion.com/v1/blocks/week-block/children?page_size=100") {
+          return {
+            ok: true,
+            json: async () => ({
+              results: [
+                {
+                  id: "ongoing-heading",
+                  type: "heading_2",
+                  has_children: true,
+                  heading_2: { rich_text: [{ plain_text: "This Week Ongoing" }] },
+                },
+              ],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            results: [
+              {
+                id: "ongoing-todo",
+                type: "to_do",
+                has_children: false,
+                to_do: { checked: false, rich_text: [{ plain_text: "[PL] Message beta follow up" }] },
+              },
+            ],
+          }),
+        };
+      },
+    },
+  );
+
+  assert.equal(source.tasks[1][0], "[PL] Message beta follow up");
+  assert.equal(source.tasks[1][10], "ongoing-todo");
   assert.equal(source.tasks[1][11], "daily-work");
 });
 
