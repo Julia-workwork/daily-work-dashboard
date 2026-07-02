@@ -186,7 +186,7 @@ test("POST /api/notion/tasks creates a Notion task through configured writer", a
     notionTasksDataSourceId: "collection://abc123",
     createNotionTask: async (options) => {
       calls.push(options);
-      return { url: "https://notion.so/task-row" };
+      return { id: "new-task-page", url: "https://notion.so/task-row" };
     },
   });
 
@@ -205,6 +205,8 @@ test("POST /api/notion/tasks creates a Notion task through configured writer", a
   const payload = response.json();
 
   assert.equal(response.status, 201);
+  assert.equal(payload.sourceId, "new-task-page");
+  assert.equal(payload.sourceType, "workflow-task");
   assert.equal(payload.notionUrl, "https://notion.so/task-row");
   assert.equal(calls[0].token, "secret-token");
   assert.equal(calls[0].dataSourceId, "collection://abc123");

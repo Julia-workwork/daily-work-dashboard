@@ -202,12 +202,11 @@ function findTaskByKey(data, key) {
   return allTasks(data).find((task) => taskKey(task) === key);
 }
 
-function canEditTask(task) {
+function canPatchTask(task) {
   return Boolean(task?.sourceId);
 }
 
 function editTaskButton(task, className = "row-edit-action") {
-  if (!canEditTask(task)) return "";
   return `<button class="text-action ${className}" type="button" data-edit-task="${taskKey(task)}">Edit</button>`;
 }
 
@@ -909,7 +908,7 @@ function filteredTasks(data) {
 }
 
 function inlineSelect(task, field, values) {
-  if (!canEditTask(task)) {
+  if (!canPatchTask(task)) {
     if (field === "priority") return chip(task.priority, priorityClass(task.priority));
     if (field === "status") return chip(task.status, statusClass(task.status));
     return escapeHtml(task[field] || "—");
@@ -1093,8 +1092,17 @@ async function saveTaskToNotion(task) {
 }
 
 async function saveTaskEdit(task) {
-  if (!canEditTask(task)) {
-    throw new Error("This item is read-only because it does not have a Notion source id.");
+  if (!canPatchTask(task)) {
+    const created = await saveTaskToNotion(task);
+    return {
+      ...created,
+      task: {
+        ...task,
+        sourceId: created.sourceId || "",
+        sourceType: created.sourceType || "workflow-task",
+        notionUrl: created.notionUrl || "",
+      },
+    };
   }
   const endpoint = task.sourceType === "daily-work" ? "/api/notion/daily-work" : "/api/notion/tasks";
   const response = await fetch(endpoint, {
@@ -1154,14 +1162,16 @@ function bindEditTaskButtons(data) {
       const dialog = document.querySelector("#task-edit-dialog");
       const form = document.querySelector("#task-edit-form");
       const note = document.querySelector("[data-edit-source-note]");
-      if (!task || !canEditTask(task) || !dialog || !form) return;
+      if (!task || !dialog || !form) return;
       form.dataset.taskKey = taskKey(task);
       fillTaskEditForm(form, task);
       if (note) {
         note.textContent =
           task.sourceType === "daily-work"
             ? "This edits the original Daily Work todo block in Notion."
-            : "This edits the Workflow Tasks database row in Notion.";
+            : task.sourceId
+              ? "This edits the Workflow Tasks database row in Notion."
+              : "This record has no source id, so saving will create a Workflow Tasks row.";
       }
       dialog.showModal();
     });
@@ -1183,8 +1193,8 @@ function bindTaskEditor(data) {
     submit.disabled = true;
     if (status) status.textContent = "Saving changes to Notion...";
     try {
-      await saveTaskEdit(task);
-      replaceTaskInState(data, task);
+      const result = await saveTaskEdit(task);
+      replaceTaskInState(data, result.task || task);
       if (status) status.textContent = "Saved.";
       dialog?.close();
       render();

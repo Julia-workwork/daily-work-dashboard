@@ -187,6 +187,8 @@ export function createAppServer(options = {}) {
         });
         sendJson(res, 201, {
           ok: true,
+          sourceId: result.id,
+          sourceType: "workflow-task",
           notionUrl: result.url,
           task,
         });

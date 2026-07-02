@@ -272,7 +272,7 @@ test("monthly quantified output details are grouped by business line", async () 
 test("frontend supports editing tasks and source records", async () => {
   const source = await read("../static/app.js");
 
-  assert.match(source, /function canEditTask\(task\)/);
+  assert.match(source, /function canPatchTask\(task\)/);
   assert.match(source, /data-edit-task/);
   assert.match(source, /data-inline-field/);
   assert.match(source, /bindInlineTaskControls/);
@@ -282,12 +282,14 @@ test("frontend supports editing tasks and source records", async () => {
   assert.match(source, /name="taskName"/);
 });
 
-test("frontend does not open edit dialogs for tasks without source ids", async () => {
+test("frontend keeps edit available for tasks without source ids by saving a workflow task copy", async () => {
   const source = await read("../static/app.js");
 
-  assert.match(source, /if \(!canEditTask\(task\)\) return "";/);
-  assert.match(source, /if \(!task \|\| !canEditTask\(task\) \|\| !dialog \|\| !form\) return;/);
-  assert.match(source, /throw new Error\("This item is read-only because it does not have a Notion source id\."\)/);
+  assert.match(source, /function canPatchTask\(task\)/);
+  assert.match(source, /return `<button class="text-action \$\{className\}" type="button" data-edit-task="\$\{taskKey\(task\)\}">Edit<\/button>`;/);
+  assert.match(source, /if \(!canPatchTask\(task\)\) \{/);
+  assert.match(source, /const created = await saveTaskToNotion\(task\);/);
+  assert.match(source, /sourceType:\s*created\.sourceType \|\| "workflow-task"/);
 });
 
 test("tasks page supports week filtering and cleaned tag display", async () => {
