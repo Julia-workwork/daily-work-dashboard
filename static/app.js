@@ -28,6 +28,7 @@ const elements = {
 };
 
 const DEFAULT_TASK_CATEGORIES = ["Content", "User Feedback", "Product", "Social", "Data", "Operations", "Meeting", "Other"];
+const HIDDEN_SOURCE_TASK_KEYS = "daily-work-hidden-source-task-keys";
 
 const WORKFLOW_TAG_GROUPS = [
   {
@@ -119,8 +120,39 @@ function unique(values) {
   return [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right, "en"));
 }
 
+function hiddenSourceTaskKeys() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(HIDDEN_SOURCE_TASK_KEYS) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberHiddenSourceTask(key) {
+  if (!key) return;
+  const keys = hiddenSourceTaskKeys();
+  keys.add(key);
+  try {
+    localStorage.setItem(HIDDEN_SOURCE_TASK_KEYS, JSON.stringify([...keys]));
+  } catch {
+    // Browser storage can be unavailable in private modes; the saved Notion row still remains valid.
+  }
+}
+
+function hasEditableTaskCopy(task, tasks) {
+  if (task.sourceId) return false;
+  return tasks.some(
+    (candidate) =>
+      candidate.sourceType === "workflow-task" &&
+      candidate.sourceId &&
+      candidate.taskName === task.taskName &&
+      candidate.dueDate === task.dueDate,
+  );
+}
+
 function allTasks(data) {
-  return [...state.localTasks, ...data.tasks];
+  const hidden = hiddenSourceTaskKeys();
+  return [...state.localTasks, ...data.tasks.filter((task) => !hidden.has(taskKey(task)) && !hasEditableTaskCopy(task, data.tasks))];
 }
 
 function cleanInputDate(value) {
@@ -1117,10 +1149,21 @@ async function saveTaskEdit(task) {
   return payload;
 }
 
-function replaceTaskInState(data, updatedTask) {
-  const replace = (task) => (taskKey(task) === taskKey(updatedTask) || (task.sourceId && task.sourceId === updatedTask.sourceId) ? { ...task, ...updatedTask } : task);
+function replaceTaskInState(data, updatedTask, originalKey = "") {
+  let replaced = false;
+  const replace = (task) => {
+    const matchesOriginal = originalKey && taskKey(task) === originalKey;
+    const matchesUpdated = taskKey(task) === taskKey(updatedTask);
+    const matchesSource = task.sourceId && task.sourceId === updatedTask.sourceId;
+    if (!matchesOriginal && !matchesUpdated && !matchesSource) return task;
+    replaced = true;
+    return { ...task, ...updatedTask };
+  };
   data.tasks = data.tasks.map(replace);
   state.localTasks = state.localTasks.map(replace);
+  if (!replaced) {
+    state.localTasks = [updatedTask, ...state.localTasks];
+  }
 }
 
 async function updateInlineTaskField(data, select) {
@@ -1187,14 +1230,20 @@ function bindTaskEditor(data) {
   });
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const original = findTaskByKey(data, form.dataset.taskKey) || {};
+    const originalKey = form.dataset.taskKey;
+    const original = findTaskByKey(data, originalKey) || {};
+    const originalWasPatchable = canPatchTask(original);
     const task = taskFromEditForm(form, original);
     const submit = form.querySelector("button[type=submit]");
     submit.disabled = true;
     if (status) status.textContent = "Saving changes to Notion...";
     try {
       const result = await saveTaskEdit(task);
-      replaceTaskInState(data, result.task || task);
+      const savedTask = result.task || task;
+      replaceTaskInState(data, savedTask, originalKey);
+      if (!originalWasPatchable && canPatchTask(savedTask)) {
+        rememberHiddenSourceTask(originalKey);
+      }
       if (status) status.textContent = "Saved.";
       dialog?.close();
       render();

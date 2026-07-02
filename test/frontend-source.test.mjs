@@ -292,6 +292,22 @@ test("frontend keeps edit available for tasks without source ids by saving a wor
   assert.match(source, /sourceType:\s*created\.sourceType \|\| "workflow-task"/);
 });
 
+test("frontend replaces the original unsourced row after creating a workflow task copy", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /HIDDEN_SOURCE_TASK_KEYS/);
+  assert.match(source, /function hiddenSourceTaskKeys\(\)/);
+  assert.match(source, /function rememberHiddenSourceTask\(key\)/);
+  assert.match(source, /function hasEditableTaskCopy\(task, tasks\)/);
+  assert.match(source, /data\.tasks\.filter\(\(task\) => !hidden\.has\(taskKey\(task\)\) && !hasEditableTaskCopy\(task, data\.tasks\)\)/);
+  assert.match(source, /!hasEditableTaskCopy\(task, data\.tasks\)/);
+  assert.match(source, /candidate\.sourceType === "workflow-task"/);
+  assert.match(source, /function replaceTaskInState\(data, updatedTask, originalKey = ""\)/);
+  assert.match(source, /taskKey\(task\) === originalKey/);
+  assert.match(source, /replaceTaskInState\(data, savedTask, originalKey\)/);
+  assert.match(source, /rememberHiddenSourceTask\(originalKey\)/);
+});
+
 test("tasks page supports week filtering and cleaned tag display", async () => {
   const source = await read("../static/app.js");
 
