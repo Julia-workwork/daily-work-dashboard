@@ -1700,13 +1700,13 @@ async function login(password) {
   return payload;
 }
 
-async function loadWorkflow() {
+async function loadWorkflow(options = {}) {
   showState("Syncing work records...");
   setSyncLine("Syncing");
   elements.refresh.classList.add("is-loading");
 
   try {
-    const response = await fetch("/api/workflow");
+    const response = await fetch(options.forceRefresh ? "/api/workflow?refresh=1" : "/api/workflow");
     const payload = await response.json();
     if (!response.ok) {
       if (payload.authRequired) {
@@ -1718,8 +1718,9 @@ async function loadWorkflow() {
     }
     state.data = payload;
     const time = new Date(payload.updatedAt).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" });
-    showState(`Synced ${time}`, "success");
-    setSyncLine(`Synced ${time}`, "success");
+    const syncLabel = payload.cache?.status === "cached" ? `Ready ${time}` : `Synced ${time}`;
+    showState(payload.syncWarning ? `Showing recent records. Latest sync failed: ${payload.syncWarning}` : syncLabel, payload.syncWarning ? "warning" : "success");
+    setSyncLine(syncLabel, payload.syncWarning ? "warning" : "success");
     render();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to sync work records.";
@@ -1737,7 +1738,7 @@ elements.tabs.forEach((tab) => {
   });
 });
 
-elements.refresh.addEventListener("click", loadWorkflow);
+elements.refresh.addEventListener("click", () => loadWorkflow({ forceRefresh: true }));
 
 elements.authForm?.addEventListener("submit", async (event) => {
   event.preventDefault();

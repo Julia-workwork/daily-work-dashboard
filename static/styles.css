@@ -136,6 +136,11 @@ p {
   color: var(--red);
 }
 
+.sync-pill.warning {
+  background: rgba(255, 255, 255, 0.9);
+  color: #4d4300;
+}
+
 .sync-dot {
   width: 9px;
   height: 9px;
@@ -145,6 +150,10 @@ p {
 
 .sync-pill.error .sync-dot {
   background: var(--red);
+}
+
+.sync-pill.warning .sync-dot {
+  background: var(--yellow);
 }
 
 .icon-button {
@@ -265,6 +274,11 @@ main {
 .state-panel.error {
   background: #fff;
   color: var(--red);
+}
+
+.state-panel.warning {
+  background: #fffbea;
+  color: #5d5000;
 }
 
 .view {

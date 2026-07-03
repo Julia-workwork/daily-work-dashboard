@@ -90,6 +90,66 @@ test("GET /api/workflow prefers Notion when Daily Work is configured", async () 
   assert.equal(calls[0].tasksDataSourceId, "tasks-source");
 });
 
+test("GET /api/workflow reuses a recent Notion sync for repeated page loads", async () => {
+  let calls = 0;
+  const server = createAppServer({
+    notionToken: "secret-token",
+    notionDailyWorkPageId: "daily-page",
+    notionTasksDataSourceId: "tasks-source",
+    fetchNotionSource: async () => {
+      calls += 1;
+      return {
+        dailyExtracts: [["Date"], ["2026-06-22"]],
+        tasks: [["Task Name", "Priority", "Status"], [`From Notion ${calls}`, "P1", "In Progress"]],
+        weeklyReview: [["Week Range", "Draft Weekly Report"], ["2026.06.22-2026.06.27", "Notion weekly report"]],
+        categorySummary: [["Category", "Open Tasks"], ["Content", "1"]],
+        settings: [["Type", "Value"], ["Priority", "P1"]],
+        source: { kind: "notion", month: "2026-06" },
+      };
+    },
+    today: "2026-06-22",
+  });
+
+  const first = await request(server, "/api/workflow");
+  const second = await request(server, "/api/workflow");
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(calls, 1);
+  assert.equal(first.json().tasks[0].taskName, "From Notion 1");
+  assert.equal(second.json().tasks[0].taskName, "From Notion 1");
+});
+
+test("GET /api/workflow refresh query bypasses the recent sync cache", async () => {
+  let calls = 0;
+  const server = createAppServer({
+    notionToken: "secret-token",
+    notionDailyWorkPageId: "daily-page",
+    notionTasksDataSourceId: "tasks-source",
+    fetchNotionSource: async () => {
+      calls += 1;
+      return {
+        dailyExtracts: [["Date"], ["2026-06-22"]],
+        tasks: [["Task Name", "Priority", "Status"], [`From Notion ${calls}`, "P1", "In Progress"]],
+        weeklyReview: [["Week Range", "Draft Weekly Report"], ["2026.06.22-2026.06.27", "Notion weekly report"]],
+        categorySummary: [["Category", "Open Tasks"], ["Content", "1"]],
+        settings: [["Type", "Value"], ["Priority", "P1"]],
+        source: { kind: "notion", month: "2026-06" },
+      };
+    },
+    today: "2026-06-22",
+  });
+
+  const first = await request(server, "/api/workflow");
+  const second = await request(server, "/api/workflow?refresh=1");
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(calls, 2);
+  assert.equal(first.json().tasks[0].taskName, "From Notion 1");
+  assert.equal(second.json().tasks[0].taskName, "From Notion 2");
+});
+
 test("GET /api/workflow returns JSON error on fetch failure", async () => {
   const server = createAppServer({
     fetchTabs: async () => {

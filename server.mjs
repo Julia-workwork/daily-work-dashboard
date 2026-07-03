@@ -129,6 +129,59 @@ export function createAppServer(options = {}) {
     options.notionTasksDataSourceId || process.env.NOTION_TASKS_DATA_SOURCE_ID || DEFAULT_NOTION_TASKS_DATA_SOURCE_ID;
   const dashboardPassword = clean(options.dashboardPassword ?? process.env.DASHBOARD_PASSWORD ?? "");
   const today = options.today;
+  const workflowCacheTtlMs = Number(options.workflowCacheTtlMs ?? process.env.WORKFLOW_CACHE_TTL_MS ?? 60_000);
+  let workflowCache = null;
+  let workflowLoadPromise = null;
+
+  async function loadWorkflowPayload({ forceRefresh = false } = {}) {
+    const now = Date.now();
+    if (!forceRefresh && workflowCache && now - workflowCache.cachedAt < workflowCacheTtlMs) {
+      return {
+        ...workflowCache.payload,
+        cache: { status: "cached", cachedAt: new Date(workflowCache.cachedAt).toISOString() },
+      };
+    }
+
+    if (!forceRefresh && workflowLoadPromise) {
+      return workflowLoadPromise;
+    }
+
+    workflowLoadPromise = (async () => {
+      try {
+        const useNotionSource = Boolean(notionToken && notionDailyWorkPageId);
+        const rawTabs = useNotionSource
+          ? await fetchNotionSource({
+              token: notionToken,
+              dailyWorkPageId: notionDailyWorkPageId,
+              tasksDataSourceId: notionTasksDataSourceId,
+              today,
+            })
+          : await fetchTabs({ spreadsheetId });
+        const payload = buildDashboard(rawTabs, {
+          today,
+          ...(rawTabs.source ? { source: rawTabs.source } : workflowSource({ spreadsheetId })),
+        });
+        workflowCache = { payload, cachedAt: Date.now() };
+        return {
+          ...payload,
+          cache: { status: forceRefresh ? "refreshed" : "synced", cachedAt: new Date(workflowCache.cachedAt).toISOString() },
+        };
+      } catch (error) {
+        if (workflowCache) {
+          return {
+            ...workflowCache.payload,
+            cache: { status: "stale", cachedAt: new Date(workflowCache.cachedAt).toISOString() },
+            syncWarning: error instanceof Error ? error.message : "Unable to sync latest records.",
+          };
+        }
+        throw error;
+      } finally {
+        workflowLoadPromise = null;
+      }
+    })();
+
+    return workflowLoadPromise;
+  }
 
   return createServer(async (req, res) => {
     try {
@@ -157,20 +210,7 @@ export function createAppServer(options = {}) {
           sendJson(res, 401, { authRequired: true, error: "Password required" });
           return;
         }
-        const useNotionSource = Boolean(notionToken && notionDailyWorkPageId);
-        const rawTabs = useNotionSource
-          ? await fetchNotionSource({
-              token: notionToken,
-              dailyWorkPageId: notionDailyWorkPageId,
-              tasksDataSourceId: notionTasksDataSourceId,
-              today,
-            })
-          : await fetchTabs({ spreadsheetId });
-        const payload = buildDashboard(rawTabs, {
-          today,
-          ...(rawTabs.source ? { source: rawTabs.source } : workflowSource({ spreadsheetId })),
-        });
-        sendJson(res, 200, payload);
+        sendJson(res, 200, await loadWorkflowPayload({ forceRefresh: url.searchParams.get("refresh") === "1" }));
         return;
       }
 
