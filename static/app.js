@@ -987,12 +987,17 @@ function taskTable(tasks, taskPool) {
               .map(
                 (task) => `
                   <div class="table-row">
-                    <span>${escapeHtml(cleanTaskText(task.taskName))}${task.isLocalDraft ? '<em class="local-task-mark">Kept as local draft</em>' : ""}${task.notionUrl ? '<em class="local-task-mark">Saved to Workflow Tasks</em>' : ""}</span>
+                    <span class="task-row-main">
+                      <strong class="task-row-title">${escapeHtml(cleanTaskText(task.taskName))}</strong>
+                      <em class="task-row-meta">${escapeHtml(cleanTaskText(task.nextAction || task.category || "Confirm next action"))}</em>
+                      ${task.isLocalDraft ? '<em class="local-task-mark">Kept as local draft</em>' : ""}
+                      ${task.notionUrl ? '<em class="local-task-mark">Saved to Workflow Tasks</em>' : ""}
+                    </span>
                     <span>${inlineSelect(task, "category", categoryOptions)}</span>
                     <span>${inlineSelect(task, "priority", priorityOptions)}</span>
                     <span>${inlineSelect(task, "status", statusOptions)}</span>
                     <span>${escapeHtml(task.dueDate || "—")}</span>
-                    <span>${escapeHtml(cleanTaskText(task.nextAction || "—"))}</span>
+                    <span class="task-row-next">${escapeHtml(cleanTaskText(task.nextAction || "—"))}</span>
                     <span>${editTaskButton(task, "compact-action")}</span>
                   </div>
                 `,
