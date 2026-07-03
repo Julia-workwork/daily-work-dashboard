@@ -163,11 +163,25 @@ function cleanInputDate(value) {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
+function normalizeEscapedText(text) {
+  return String(text || "")
+    .replace(/\\+\[/g, "[")
+    .replace(/\\+\]/g, "]")
+    .replace(/^\\+/, "")
+    .trim();
+}
+
+function taskCategoryOptions(data, current = "") {
+  return unique([...DEFAULT_TASK_CATEGORIES, ...allTasks(data).map((task) => task.category), current].filter(Boolean))
+    .map((value) => `<option value="${escapeHtml(value)}" ${current === value ? "selected" : ""}>${escapeHtml(value)}</option>`)
+    .join("");
+}
+
 function taskFromForm(form) {
   const formData = new FormData(form);
   return {
-    taskName: String(formData.get("taskName") || "").trim(),
-    nextAction: String(formData.get("nextAction") || "").trim(),
+    taskName: normalizeEscapedText(formData.get("taskName")),
+    nextAction: normalizeEscapedText(formData.get("nextAction")),
     category: String(formData.get("category") || "").trim() || "Other",
     priority: String(formData.get("priority") || "P2"),
     status: String(formData.get("status") || "Not started"),
@@ -182,8 +196,8 @@ function taskFromEditForm(form, original = {}) {
   const formData = new FormData(form);
   return {
     ...original,
-    taskName: String(formData.get("taskName") || "").trim(),
-    nextAction: String(formData.get("nextAction") || "").trim(),
+    taskName: normalizeEscapedText(formData.get("taskName")),
+    nextAction: normalizeEscapedText(formData.get("nextAction")),
     category: String(formData.get("category") || "").trim() || "Other",
     priority: String(formData.get("priority") || "P2"),
     status: String(formData.get("status") || "Not Started"),
@@ -1013,7 +1027,9 @@ function taskForm(data) {
         <div class="task-form-grid">
           <label>
             <span>Category</span>
-            <input name="category" list="category-options" placeholder="Product / Content / Support" />
+            <select name="category">
+              ${taskCategoryOptions(data)}
+            </select>
           </label>
           <label>
             <span>Due Date</span>
@@ -1034,11 +1050,9 @@ function taskForm(data) {
         </div>
         <label class="task-form-check">
           <input name="needsReview" type="checkbox" />
-          <span>Needs review</span>
+          <span>Mark for review</span>
         </label>
-        <datalist id="category-options">
-          ${unique([...DEFAULT_TASK_CATEGORIES, ...data.tasks.map((task) => task.category)]).map((value) => `<option value="${escapeHtml(value)}"></option>`).join("")}
-        </datalist>
+        <p class="task-form-hint">Flags this item in Focus Items and Needs Review.</p>
         <div class="task-form-actions">
           <button class="text-action" type="button" data-close-task>Cancel</button>
           <button class="text-action primary-action" type="submit">Save to Notion</button>
@@ -1074,7 +1088,9 @@ function taskEditForm(data) {
         <div class="task-form-grid">
           <label>
             <span>Category</span>
-            <input name="category" list="edit-category-options" />
+            <select name="category">
+              ${taskCategoryOptions(data)}
+            </select>
           </label>
           <label>
             <span>Due Date</span>
@@ -1095,11 +1111,9 @@ function taskEditForm(data) {
         </div>
         <label class="task-form-check">
           <input name="needsReview" type="checkbox" />
-          <span>Needs review</span>
+          <span>Mark for review</span>
         </label>
-        <datalist id="edit-category-options">
-          ${unique([...DEFAULT_TASK_CATEGORIES, ...data.tasks.map((task) => task.category)]).map((value) => `<option value="${escapeHtml(value)}"></option>`).join("")}
-        </datalist>
+        <p class="task-form-hint">Flags this item in Focus Items and Needs Review.</p>
         <div class="task-form-actions">
           <button class="text-action" type="button" data-close-edit-task>Cancel</button>
           <button class="text-action primary-action" type="submit">Save changes</button>
@@ -1189,9 +1203,9 @@ async function updateInlineTaskField(data, select) {
 function fillTaskEditForm(form, task) {
   form.elements.sourceId.value = task.sourceId || "";
   form.elements.sourceType.value = task.sourceType || "";
-  form.elements.taskName.value = task.taskName || "";
-  form.elements.nextAction.value = task.nextAction || "";
-  form.elements.category.value = task.category || "Other";
+  form.elements.taskName.value = normalizeEscapedText(task.taskName || "");
+  form.elements.nextAction.value = normalizeEscapedText(task.nextAction || "");
+  form.elements.category.value = normalizeEscapedText(task.category || "Other");
   form.elements.dueDate.value = cleanInputDate(task.dueDate);
   form.elements.priority.value = task.priority || "P2";
   form.elements.status.value = task.status || "Not Started";

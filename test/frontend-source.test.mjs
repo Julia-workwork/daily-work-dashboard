@@ -323,6 +323,23 @@ test("tasks page supports week filtering and cleaned tag display", async () => {
   assert.match(source, /taskDetail = cleanTaskText/);
 });
 
+test("task dialogs use selectable categories and clean escaped text while editing", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /function taskCategoryOptions\(data, current = ""\)/);
+  assert.match(source, /function normalizeEscapedText\(text\)/);
+  assert.match(source, /form\.elements\.taskName\.value = normalizeEscapedText\(task\.taskName \|\| ""\)/);
+  assert.match(source, /form\.elements\.nextAction\.value = normalizeEscapedText\(task\.nextAction \|\| ""\)/);
+  assert.match(source, /taskName: normalizeEscapedText\(formData\.get\("taskName"\)\)/);
+  assert.match(source, /<select name="category">/);
+  assert.match(source, /taskCategoryOptions\(data\)/);
+  assert.match(source, /form\.elements\.category\.value = normalizeEscapedText\(task\.category \|\| "Other"\)/);
+  assert.match(source, /Mark for review/);
+  assert.match(source, /Flags this item in Focus Items and Needs Review/);
+  assert.doesNotMatch(source, /list="edit-category-options"/);
+  assert.doesNotMatch(source, /id="edit-category-options"/);
+});
+
 test("escaped source tags are normalized before display", async () => {
   const source = await read("../static/app.js");
   const displayReportTextBlock = source.match(/function displayReportText\(text\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
