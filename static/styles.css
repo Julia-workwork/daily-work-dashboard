@@ -850,12 +850,12 @@ select {
 
 .table-row {
   display: grid;
-  grid-template-columns: minmax(320px, 1.6fr) 150px 86px 142px 108px minmax(190px, 0.9fr) 70px;
-  min-width: 1080px;
-  min-height: 72px;
+  grid-template-columns: minmax(360px, 1.8fr) 132px 72px 132px 96px minmax(150px, 0.7fr) 58px;
+  min-width: 1010px;
+  min-height: 64px;
   align-items: center;
   border-top: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 18px;
+  border-radius: 14px;
 }
 
 .table-row:first-child {
@@ -864,7 +864,7 @@ select {
 
 .table-row span {
   min-width: 0;
-  padding: 10px 8px;
+  padding: 8px 6px;
   border-left: 0;
   overflow: hidden;
 }
@@ -896,7 +896,7 @@ select {
   display: block;
   overflow: hidden;
   color: #1d1d1f;
-  font: 750 16px/1.2 var(--system-font);
+  font: 720 15px/1.18 var(--system-font);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -921,36 +921,49 @@ select {
 
 .compact-action,
 .row-edit-action {
-  min-height: 30px;
-  padding: 6px 10px;
-  font-size: 12px;
+  min-height: 28px;
+  padding: 5px 9px;
+  font-size: 11px;
 }
 
 .inline-task-select {
   width: 100%;
-  min-height: 32px;
+  min-height: 28px;
   min-width: 0;
   border-radius: 999px;
-  padding: 7px 26px 7px 11px;
-  background: rgba(255, 255, 255, 0.78);
-  font: 650 12px/1 var(--system-font);
+  border-color: rgba(15, 23, 42, 0.08);
+  padding: 5px 22px 5px 10px;
+  background: rgba(255, 255, 255, 0.46);
+  color: #151517;
+  font: 650 11px/1 var(--system-font);
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  text-overflow: ellipsis;
 }
 
 .direct-edit-cell {
   position: relative;
-  display: block;
+  display: inline-block;
+  width: 100%;
+  max-width: 100%;
 }
 
 .direct-edit-cell::after {
   content: "⌄";
   position: absolute;
   top: 50%;
-  right: 10px;
+  right: 8px;
   pointer-events: none;
   color: #687183;
   transform: translateY(-54%);
   font: 750 12px/1 var(--system-font);
+}
+
+.inline-task-select:hover,
+.inline-task-select:focus {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.86);
 }
 
 .inline-task-select:disabled {

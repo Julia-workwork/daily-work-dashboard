@@ -971,6 +971,13 @@ function inlineSelect(task, field, values) {
   `;
 }
 
+function taskRowMeta(task) {
+  const taskTitle = cleanTaskText(task.taskName);
+  const nextAction = cleanTaskText(task.nextAction);
+  if (!nextAction || nextAction === taskTitle) return "";
+  return `<em class="task-row-meta">${escapeHtml(nextAction)}</em>`;
+}
+
 function taskTable(tasks, taskPool) {
   const categoryOptions = unique([...DEFAULT_TASK_CATEGORIES, ...taskPool.map((task) => task.category)]);
   const priorityOptions = unique([...taskPool.map((task) => task.priority), "P1", "P2", "P3"]);
@@ -989,7 +996,7 @@ function taskTable(tasks, taskPool) {
                   <div class="table-row">
                     <span class="task-row-main">
                       <strong class="task-row-title">${escapeHtml(cleanTaskText(task.taskName))}</strong>
-                      <em class="task-row-meta">${escapeHtml(cleanTaskText(task.nextAction || task.category || "Confirm next action"))}</em>
+                      ${taskRowMeta(task)}
                       ${task.isLocalDraft ? '<em class="local-task-mark">Kept as local draft</em>' : ""}
                       ${task.notionUrl ? '<em class="local-task-mark">Saved to Workflow Tasks</em>' : ""}
                     </span>

@@ -378,13 +378,15 @@ test("task table uses a compact command-list layout", async () => {
   assert.match(source, /class="task-row-title"/);
   assert.match(source, /class="task-row-meta"/);
   assert.match(source, /class="task-row-next"/);
-  assert.match(tableRowBlock, /min-height:\s*72px/);
-  assert.match(tableRowBlock, /grid-template-columns:\s*minmax\(320px,\s*1\.6fr\) 150px 86px 142px 108px minmax\(190px,\s*0\.9fr\) 70px/);
+  assert.match(tableRowBlock, /min-height:\s*64px/);
+  assert.match(tableRowBlock, /grid-template-columns:\s*minmax\(360px,\s*1\.8fr\) 132px 72px 132px 96px minmax\(150px,\s*0\.7fr\) 58px/);
   assert.match(taskTitleBlock, /white-space:\s*nowrap/);
   assert.match(taskTitleBlock, /text-overflow:\s*ellipsis/);
   assert.match(taskMetaBlock, /font:\s*600 12px\/1\.3/);
   assert.match(styles, /\.table-row span\s*\{[\s\S]*border-left:\s*0/);
-  assert.match(styles, /\.inline-task-select\s*\{[\s\S]*min-height:\s*32px/);
+  assert.match(styles, /\.inline-task-select\s*\{[\s\S]*min-height:\s*28px/);
+  assert.match(styles, /\.inline-task-select\s*\{[\s\S]*appearance:\s*none/);
+  assert.match(styles, /\.direct-edit-cell\s*\{[\s\S]*display:\s*inline-block/);
 });
 
 test("overview metrics use compact narrow-screen layout", async () => {
