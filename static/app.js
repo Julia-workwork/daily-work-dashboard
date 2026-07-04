@@ -930,9 +930,11 @@ function renderOverview(data) {
         </div>
       </article>
     </section>
+    ${taskEditForm(data)}
   `;
 
   bindJumpButtons();
+  bindTaskEditor(data);
   bindEditTaskButtons(data);
 }
 

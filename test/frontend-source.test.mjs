@@ -282,6 +282,16 @@ test("frontend supports editing tasks and source records", async () => {
   assert.match(source, /name="taskName"/);
 });
 
+test("overview focus items include a working edit dialog", async () => {
+  const source = await read("../static/app.js");
+  const renderOverviewBlock = source.match(/function renderOverview\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(renderOverviewBlock, /focusTasks\.map\(taskRow\)/);
+  assert.match(renderOverviewBlock, /taskEditForm\(data\)/);
+  assert.match(renderOverviewBlock, /bindTaskEditor\(data\)/);
+  assert.match(renderOverviewBlock, /bindEditTaskButtons\(data\)/);
+});
+
 test("frontend keeps edit available for tasks without source ids by saving a workflow task copy", async () => {
   const source = await read("../static/app.js");
 
