@@ -482,3 +482,10 @@ test("overview separates weekly ongoing work from daily records", async () => {
   assert.match(source, /Daily Records/);
   assert.match(source, /<details class="daily-record-group"/);
 });
+
+test("frontend labels stale cache as ready while updating", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /stale-refreshing/);
+  assert.match(source, /Ready \$\{time\} · updating/);
+});

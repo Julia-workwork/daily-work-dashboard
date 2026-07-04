@@ -133,18 +133,16 @@ export function createAppServer(options = {}) {
   let workflowCache = null;
   let workflowLoadPromise = null;
 
-  async function loadWorkflowPayload({ forceRefresh = false } = {}) {
-    const now = Date.now();
-    if (!forceRefresh && workflowCache && now - workflowCache.cachedAt < workflowCacheTtlMs) {
-      return {
-        ...workflowCache.payload,
-        cache: { status: "cached", cachedAt: new Date(workflowCache.cachedAt).toISOString() },
-      };
-    }
+  function cachedWorkflowPayload(status, extra = {}) {
+    return {
+      ...workflowCache.payload,
+      cache: { status, cachedAt: new Date(workflowCache.cachedAt).toISOString() },
+      ...extra,
+    };
+  }
 
-    if (!forceRefresh && workflowLoadPromise) {
-      return workflowLoadPromise;
-    }
+  function startWorkflowRefresh({ forceRefresh = false } = {}) {
+    if (!forceRefresh && workflowLoadPromise) return workflowLoadPromise;
 
     workflowLoadPromise = (async () => {
       try {
@@ -162,17 +160,12 @@ export function createAppServer(options = {}) {
           ...(rawTabs.source ? { source: rawTabs.source } : workflowSource({ spreadsheetId })),
         });
         workflowCache = { payload, cachedAt: Date.now() };
-        return {
-          ...payload,
-          cache: { status: forceRefresh ? "refreshed" : "synced", cachedAt: new Date(workflowCache.cachedAt).toISOString() },
-        };
+        return cachedWorkflowPayload(forceRefresh ? "refreshed" : "synced");
       } catch (error) {
         if (workflowCache) {
-          return {
-            ...workflowCache.payload,
-            cache: { status: "stale", cachedAt: new Date(workflowCache.cachedAt).toISOString() },
+          return cachedWorkflowPayload("stale", {
             syncWarning: error instanceof Error ? error.message : "Unable to sync latest records.",
-          };
+          });
         }
         throw error;
       } finally {
@@ -181,6 +174,24 @@ export function createAppServer(options = {}) {
     })();
 
     return workflowLoadPromise;
+  }
+
+  async function loadWorkflowPayload({ forceRefresh = false } = {}) {
+    const now = Date.now();
+    if (!forceRefresh && workflowCache && now - workflowCache.cachedAt < workflowCacheTtlMs) {
+      return cachedWorkflowPayload("cached");
+    }
+
+    if (!forceRefresh && workflowCache) {
+      startWorkflowRefresh().catch(() => {});
+      return cachedWorkflowPayload("stale-refreshing");
+    }
+
+    if (!forceRefresh && workflowLoadPromise) {
+      return workflowLoadPromise;
+    }
+
+    return startWorkflowRefresh({ forceRefresh });
   }
 
   return createServer(async (req, res) => {

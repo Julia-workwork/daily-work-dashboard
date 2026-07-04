@@ -150,6 +150,57 @@ test("GET /api/workflow refresh query bypasses the recent sync cache", async () 
   assert.equal(second.json().tasks[0].taskName, "From Notion 2");
 });
 
+test("GET /api/workflow returns expired cache immediately while refreshing in background", async () => {
+  let calls = 0;
+  let secondSyncStartedResolve;
+  let releaseSecondSync;
+  const secondSyncStarted = new Promise((resolve) => {
+    secondSyncStartedResolve = resolve;
+  });
+  const blockedSecondSync = new Promise((resolve) => {
+    releaseSecondSync = resolve;
+  });
+  const server = createAppServer({
+    notionToken: "secret-token",
+    notionDailyWorkPageId: "daily-page",
+    notionTasksDataSourceId: "tasks-source",
+    workflowCacheTtlMs: 0,
+    fetchNotionSource: async () => {
+      calls += 1;
+      if (calls === 2) {
+        secondSyncStartedResolve();
+        await blockedSecondSync;
+      }
+      return {
+        dailyExtracts: [["Date"], ["2026-06-22"]],
+        tasks: [["Task Name", "Priority", "Status"], [`From Notion ${calls}`, "P1", "In Progress"]],
+        weeklyReview: [["Week Range", "Draft Weekly Report"], ["2026.06.22-2026.06.27", "Notion weekly report"]],
+        categorySummary: [["Category", "Open Tasks"], ["Content", "1"]],
+        settings: [["Type", "Value"], ["Priority", "P1"]],
+        source: { kind: "notion", month: "2026-06" },
+      };
+    },
+    today: "2026-06-22",
+  });
+
+  const first = await request(server, "/api/workflow");
+  const secondPromise = request(server, "/api/workflow");
+  await secondSyncStarted;
+  const second = await Promise.race([
+    secondPromise,
+    new Promise((resolve) => setTimeout(() => resolve(null), 10)),
+  ]);
+
+  assert.equal(first.status, 200);
+  assert.ok(second, "expired cache should return before the background refresh finishes");
+  assert.equal(second.status, 200);
+  assert.equal(second.json().cache.status, "stale-refreshing");
+  assert.equal(second.json().syncWarning, undefined);
+  assert.equal(second.json().tasks[0].taskName, "From Notion 1");
+  assert.equal(calls, 2);
+  releaseSecondSync();
+});
+
 test("GET /api/workflow returns JSON error on fetch failure", async () => {
   const server = createAppServer({
     fetchTabs: async () => {

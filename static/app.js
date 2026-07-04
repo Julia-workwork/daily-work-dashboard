@@ -1759,7 +1759,12 @@ async function loadWorkflow(options = {}) {
     }
     state.data = payload;
     const time = new Date(payload.updatedAt).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" });
-    const syncLabel = payload.cache?.status === "cached" ? `Ready ${time}` : `Synced ${time}`;
+    const syncLabel =
+      payload.cache?.status === "cached"
+        ? `Ready ${time}`
+        : payload.cache?.status === "stale-refreshing"
+          ? `Ready ${time} · updating`
+          : `Synced ${time}`;
     showState(payload.syncWarning ? `Showing recent records. Latest sync failed: ${payload.syncWarning}` : syncLabel, payload.syncWarning ? "warning" : "success");
     setSyncLine(syncLabel, payload.syncWarning ? "warning" : "success");
     render();
