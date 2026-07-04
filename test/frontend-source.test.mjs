@@ -417,6 +417,16 @@ test("task table uses a compact command-list layout", async () => {
   assert.match(styles, /\.direct-edit-cell\s*\{[\s\S]*display:\s*inline-block/);
 });
 
+test("task rows display the Notion created time as record time", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+
+  assert.match(source, /function formatTaskRecordTime\(value\)/);
+  assert.match(source, /task\.recordTime/);
+  assert.match(source, /class="task-row-time"/);
+  assert.match(styles, /\.task-row-time/);
+});
+
 test("overview metrics use compact narrow-screen layout", async () => {
   const styles = await read("../static/styles.css");
 

@@ -901,6 +901,17 @@ select {
   white-space: nowrap;
 }
 
+.task-row-time {
+  display: block;
+  overflow: hidden;
+  color: #8a93a3;
+  font: 700 11px/1.1 var(--system-font);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .task-row-meta {
   display: block;
   overflow: hidden;

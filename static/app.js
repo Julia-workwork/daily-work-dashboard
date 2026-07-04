@@ -277,6 +277,18 @@ function cleanTaskText(text) {
   return displayReportText(text);
 }
 
+function formatTaskRecordTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function dateMonth(value) {
   const text = String(value || "");
   return /^\d{4}-\d{2}/.test(text) ? text.slice(0, 7) : "";
@@ -1014,6 +1026,7 @@ function taskTable(tasks, taskPool) {
                 (task) => `
                   <div class="table-row">
                     <span class="task-row-main">
+                      ${task.recordTime ? `<em class="task-row-time">${escapeHtml(formatTaskRecordTime(task.recordTime))}</em>` : ""}
                       <strong class="task-row-title">${escapeHtml(cleanTaskText(task.taskName))}</strong>
                       ${taskRowMeta(task)}
                       ${task.isLocalDraft ? '<em class="local-task-mark">Kept as local draft</em>' : ""}

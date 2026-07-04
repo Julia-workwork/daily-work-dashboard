@@ -99,6 +99,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
                   Priority: { select: { name: "P1" } },
                   Category: { select: { name: "User Feedback" } },
                   "Due Date": { date: { start: "2026-06-22" } },
+                  "Created Time": { created_time: "2026-07-04T06:35:00.000Z" },
                   "Next Action": { rich_text: [{ plain_text: "Ask for test video" }] },
                   Review: { checkbox: true },
                 },
@@ -118,6 +119,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
   assert.equal(tasks[0].status, "In Progress");
   assert.equal(tasks[0].needsReview, true);
   assert.equal(tasks[0].notionLink, "https://notion.so/task");
+  assert.equal(tasks[0].recordTime, "2026-07-04T06:35:00.000Z");
 });
 
 test("fetchDailyWorkBlocks maps Notion todo blocks into editable daily source tasks", async () => {
