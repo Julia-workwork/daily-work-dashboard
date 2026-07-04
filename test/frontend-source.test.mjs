@@ -326,6 +326,7 @@ test("tasks page supports week filtering and cleaned tag display", async () => {
 test("task dialogs use selectable categories and clean escaped text while editing", async () => {
   const source = await read("../static/app.js");
 
+  assert.match(source, /const DEFAULT_TASK_CATEGORIES = \["Product", "Content", "User Feedback", "Data", "IMC", "Brand", "Julia", "Other"\]/);
   assert.match(source, /function taskCategoryOptions\(data, current = ""\)/);
   assert.match(source, /function normalizeEscapedText\(text\)/);
   assert.match(source, /form\.elements\.taskName\.value = normalizeEscapedText\(task\.taskName \|\| ""\)/);
@@ -373,13 +374,14 @@ test("task inline chips use distinct colors for category, priority, and status",
   const styles = await read("../static/styles.css");
 
   assert.match(source, /function taskToneClass\(field,\s*value\)/);
-  for (const token of ["category-product", "category-content", "category-feedback", "category-data", "category-brand", "priority-p1", "priority-p2", "priority-p3", "status-progress", "status-waiting", "status-done"]) {
+  for (const token of ["category-product", "category-content", "category-feedback", "category-data", "category-brand", "category-julia", "priority-p1", "priority-p2", "priority-p3", "status-progress", "status-waiting", "status-done"]) {
     assert.match(source, new RegExp(token));
     assert.match(styles, new RegExp(`\\.tone-${token}`));
   }
 
   assert.match(styles, /\.inline-task-select\.tone-priority-p1/);
   assert.match(styles, /\.inline-task-select\.tone-category-content/);
+  assert.match(styles, /\.inline-task-select\.tone-category-julia/);
   assert.match(styles, /\.inline-task-select\.tone-status-progress/);
 });
 
@@ -395,7 +397,7 @@ test("task table uses a compact command-list layout", async () => {
   assert.match(source, /class="task-row-meta"/);
   assert.match(source, /class="task-row-next"/);
   assert.match(tableRowBlock, /min-height:\s*64px/);
-  assert.match(tableRowBlock, /grid-template-columns:\s*minmax\(360px,\s*1\.8fr\) 132px 72px 132px 96px minmax\(150px,\s*0\.7fr\) 58px/);
+  assert.match(tableRowBlock, /grid-template-columns:\s*minmax\(360px,\s*1\.8fr\) 132px 88px 132px 96px minmax\(150px,\s*0\.7fr\) 58px/);
   assert.match(taskTitleBlock, /white-space:\s*nowrap/);
   assert.match(taskTitleBlock, /text-overflow:\s*ellipsis/);
   assert.match(taskMetaBlock, /font:\s*600 12px\/1\.3/);

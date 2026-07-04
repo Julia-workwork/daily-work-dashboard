@@ -27,7 +27,7 @@ const elements = {
   tabs: [...document.querySelectorAll(".tab")],
 };
 
-const DEFAULT_TASK_CATEGORIES = ["Content", "User Feedback", "Product", "Social", "Data", "Operations", "Meeting", "Other"];
+const DEFAULT_TASK_CATEGORIES = ["Product", "Content", "User Feedback", "Data", "IMC", "Brand", "Julia", "Other"];
 const HIDDEN_SOURCE_TASK_KEYS = "daily-work-hidden-source-task-keys";
 
 const WORKFLOW_TAG_GROUPS = [
@@ -234,6 +234,7 @@ function taskToneClass(field, value) {
     if (key.includes("feedback") || key.includes("support") || key.includes("user")) return "tone-category-feedback";
     if (key.includes("data") || key.includes("report")) return "tone-category-data";
     if (key.includes("imc") || key.includes("brand")) return "tone-category-brand";
+    if (key.includes("julia")) return "tone-category-julia";
     if (key.includes("social")) return "tone-category-social";
     if (key.includes("meeting") || key.includes("operation")) return "tone-category-operations";
   }

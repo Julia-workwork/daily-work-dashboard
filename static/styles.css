@@ -850,8 +850,8 @@ select {
 
 .table-row {
   display: grid;
-  grid-template-columns: minmax(360px, 1.8fr) 132px 72px 132px 96px minmax(150px, 0.7fr) 58px;
-  min-width: 1010px;
+  grid-template-columns: minmax(360px, 1.8fr) 132px 88px 132px 96px minmax(150px, 0.7fr) 58px;
+  min-width: 1026px;
   min-height: 64px;
   align-items: center;
   border-top: 1px solid rgba(15, 23, 42, 0.06);
@@ -1043,6 +1043,12 @@ select {
   border-color: rgba(230, 57, 120, 0.24);
   background: rgba(255, 225, 237, 0.78);
   color: #9b1749;
+}
+
+.inline-task-select.tone-category-julia {
+  border-color: rgba(191, 90, 242, 0.24);
+  background: rgba(242, 228, 255, 0.78);
+  color: #6f2da8;
 }
 
 .inline-task-select.tone-category-social {
