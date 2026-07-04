@@ -29,6 +29,14 @@ const elements = {
 
 const DEFAULT_TASK_CATEGORIES = ["Product", "Content", "User Feedback", "Data", "IMC", "Brand", "Julia", "Other"];
 const HIDDEN_SOURCE_TASK_KEYS = "daily-work-hidden-source-task-keys";
+const DAILY_ROUTINE_STORAGE_KEY = "daily-work-daily-routine";
+const DEFAULT_DAILY_ROUTINE = {
+  emailsDone: false,
+  emailsCount: "",
+  groupsDone: false,
+  postsDone: false,
+  postsCount: "",
+};
 
 const WORKFLOW_TAG_GROUPS = [
   {
@@ -248,6 +256,28 @@ function chip(value, kind = "") {
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function loadDailyRoutineState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DAILY_ROUTINE_STORAGE_KEY) || "{}");
+    if (saved.date === todayIso()) {
+      return { ...DEFAULT_DAILY_ROUTINE, ...saved };
+    }
+  } catch {
+    // If local storage is unavailable, the routine still works for the current render.
+  }
+  return { date: todayIso(), ...DEFAULT_DAILY_ROUTINE };
+}
+
+function saveDailyRoutineState(nextState) {
+  const stateForToday = { date: todayIso(), ...DEFAULT_DAILY_ROUTINE, ...nextState };
+  try {
+    localStorage.setItem(DAILY_ROUTINE_STORAGE_KEY, JSON.stringify(stateForToday));
+  } catch {
+    // Daily routine is intentionally local-only, so storage failure should not block task work.
+  }
+  return stateForToday;
 }
 
 function taskStatusChips(task) {
@@ -1357,6 +1387,64 @@ function bindTaskCreator(data) {
   });
 }
 
+function dailyRoutinePanel() {
+  const routine = loadDailyRoutineState();
+  const checked = (value) => (value ? "checked" : "");
+  return `
+    <section class="daily-routine-panel" aria-label="Daily Routine">
+      <div class="routine-heading">
+        <p>Daily Routine</p>
+        <h2>Today’s fixed checks</h2>
+      </div>
+      <div class="routine-list">
+        <article class="routine-item ${routine.emailsDone ? "is-done" : ""}">
+          <label class="routine-check">
+            <input type="checkbox" data-routine-field="emailsDone" ${checked(routine.emailsDone)} />
+            <span>Handle emails</span>
+          </label>
+          <input class="routine-number" type="number" min="0" inputmode="numeric" aria-label="Email count" data-routine-field="emailsCount" value="${escapeHtml(routine.emailsCount)}" placeholder="0" />
+        </article>
+        <article class="routine-item ${routine.groupsDone ? "is-done" : ""}">
+          <label class="routine-check">
+            <input type="checkbox" data-routine-field="groupsDone" ${checked(routine.groupsDone)} />
+            <span>Check 3 groups</span>
+          </label>
+        </article>
+        <article class="routine-item ${routine.postsDone ? "is-done" : ""}">
+          <label class="routine-check">
+            <input type="checkbox" data-routine-field="postsDone" ${checked(routine.postsDone)} />
+            <span>Publish post</span>
+          </label>
+          <input class="routine-number" type="number" min="0" inputmode="numeric" aria-label="Post count" data-routine-field="postsCount" value="${escapeHtml(routine.postsCount)}" placeholder="0" />
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+function bindDailyRoutine() {
+  const panel = elements.tasks.querySelector(".daily-routine-panel");
+  if (!panel) return;
+  const updateItemState = (control) => {
+    const item = control.closest(".routine-item");
+    const checkbox = item?.querySelector('input[type="checkbox"]');
+    item?.classList.toggle("is-done", Boolean(checkbox?.checked));
+  };
+  panel.querySelectorAll("[data-routine-field]").forEach((control) => {
+    control.addEventListener("change", () => {
+      const current = loadDailyRoutineState();
+      const value = control.type === "checkbox" ? control.checked : control.value;
+      saveDailyRoutineState({ ...current, [control.dataset.routineField]: value });
+      updateItemState(control);
+    });
+    control.addEventListener("input", () => {
+      if (control.type === "checkbox") return;
+      const current = loadDailyRoutineState();
+      saveDailyRoutineState({ ...current, [control.dataset.routineField]: control.value });
+    });
+  });
+}
+
 function renderTasks(data) {
   const tasks = filteredTasks(data);
   const taskPool = allTasks(data);
@@ -1375,6 +1463,7 @@ function renderTasks(data) {
       </div>
       <button class="text-action primary-action" type="button" data-open-task>New Task</button>
     </section>
+    ${dailyRoutinePanel()}
     <article class="zine-panel">${taskTable(tasks, taskPool)}</article>
     ${taskForm(data)}
     ${taskEditForm(data)}
@@ -1387,6 +1476,7 @@ function renderTasks(data) {
       renderTasks(data);
     });
   });
+  bindDailyRoutine();
   bindTaskCreator(data);
   bindTaskEditor(data, elements.tasks);
   bindEditTaskButtons(data, elements.tasks);

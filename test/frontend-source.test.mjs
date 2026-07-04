@@ -440,6 +440,28 @@ test("task rows display the Notion created time as record time", async () => {
   assert.match(styles, /\.task-row-time/);
 });
 
+test("tasks page includes a daily routine checklist with numeric counts", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+  const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /DAILY_ROUTINE_STORAGE_KEY/);
+  assert.match(source, /function loadDailyRoutineState\(\)/);
+  assert.match(source, /function saveDailyRoutineState/);
+  assert.match(source, /function dailyRoutinePanel\(\)/);
+  assert.match(source, /function bindDailyRoutine\(\)/);
+  assert.match(source, /data-routine-field="emailsCount"/);
+  assert.match(source, /data-routine-field="postsCount"/);
+  for (const label of ["Daily Routine", "Handle emails", "Check 3 groups", "Publish post"]) {
+    assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(renderTasksBlock, /dailyRoutinePanel\(\)/);
+  assert.match(renderTasksBlock, /bindDailyRoutine\(\)/);
+  assert.match(styles, /\.daily-routine-panel/);
+  assert.match(styles, /\.routine-number/);
+  assert.match(styles, /\.routine-item\.is-done/);
+});
+
 test("overview focus items keep edit and colored status chips in one action area", async () => {
   const source = await read("../static/app.js");
   const styles = await read("../static/styles.css");
