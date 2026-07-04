@@ -467,7 +467,7 @@ main {
 
 .focus-row {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 42px minmax(0, 1fr) minmax(260px, auto);
   align-items: center;
   gap: 16px;
   padding: 16px 0;
@@ -503,11 +503,25 @@ main {
   line-height: 1.4;
 }
 
+.focus-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
 .focus-stamps {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.focus-edit-action {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  color: #1d1d1f;
 }
 
 .stamp-chip {
@@ -529,8 +543,24 @@ main {
   background: rgba(231, 255, 31, 0.72);
 }
 
+.priority-p2 {
+  background: rgba(0, 113, 227, 0.12);
+  color: #0756a5;
+}
+
+.priority-p3 {
+  background: rgba(142, 142, 147, 0.12);
+  color: #4b5563;
+}
+
+.status-progress {
+  background: rgba(0, 113, 227, 0.12);
+  color: #0756a5;
+}
+
 .status-waiting {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 149, 0, 0.14);
+  color: #8a4b00;
 }
 
 .status-done {
@@ -1920,8 +1950,13 @@ select {
     grid-template-columns: 42px minmax(0, 1fr);
   }
 
-  .focus-stamps,
-  .row-arrow {
-    display: none;
+  .focus-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .focus-stamps {
+    justify-content: flex-start;
   }
 }

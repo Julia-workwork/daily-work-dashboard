@@ -427,6 +427,21 @@ test("task rows display the Notion created time as record time", async () => {
   assert.match(styles, /\.task-row-time/);
 });
 
+test("overview focus items keep edit and colored status chips in one action area", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+
+  assert.match(source, /class="focus-actions"/);
+  assert.match(source, /class="focus-stamps"/);
+  assert.match(source, /taskStatusChips\(task\)/);
+  assert.match(source, /editTaskButton\(task,\s*"focus-edit-action"\)/);
+  assert.match(styles, /\.focus-actions/);
+  assert.match(styles, /\.focus-edit-action/);
+  assert.match(styles, /\.priority-p1/);
+  assert.match(styles, /\.status-progress/);
+  assert.match(styles, /\.status-waiting/);
+});
+
 test("overview metrics use compact narrow-screen layout", async () => {
   const styles = await read("../static/styles.css");
 

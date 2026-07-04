@@ -820,8 +820,10 @@ function taskRow(task, index) {
         <h3>${escapeHtml(taskTitle)}</h3>
         <p>${escapeHtml(taskDetail)}</p>
       </div>
-      <div class="focus-stamps">${taskStatusChips(task)}</div>
-      ${editTaskButton(task)}
+      <div class="focus-actions">
+        <div class="focus-stamps">${taskStatusChips(task)}</div>
+        ${editTaskButton(task, "focus-edit-action")}
+      </div>
     </article>
   `;
 }
