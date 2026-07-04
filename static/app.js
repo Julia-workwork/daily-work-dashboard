@@ -224,6 +224,22 @@ function statusClass(status) {
   return "";
 }
 
+function taskToneClass(field, value) {
+  const key = String(value || "").toLowerCase();
+  if (field === "priority") return `tone-${priorityClass(value) || "priority-p2"}`;
+  if (field === "status") return `tone-${statusClass(value) || "status-not-started"}`;
+  if (field === "category") {
+    if (key.includes("product")) return "tone-category-product";
+    if (key.includes("content")) return "tone-category-content";
+    if (key.includes("feedback") || key.includes("support") || key.includes("user")) return "tone-category-feedback";
+    if (key.includes("data") || key.includes("report")) return "tone-category-data";
+    if (key.includes("imc") || key.includes("brand")) return "tone-category-brand";
+    if (key.includes("social")) return "tone-category-social";
+    if (key.includes("meeting") || key.includes("operation")) return "tone-category-operations";
+  }
+  return "tone-neutral";
+}
+
 function chip(value, kind = "") {
   const className = ["stamp-chip", kind].filter(Boolean).join(" ");
   return `<span class="${className}">${escapeHtml(value || "Blank")}</span>`;
@@ -962,7 +978,7 @@ function inlineSelect(task, field, values) {
 
   return `
     <span class="direct-edit-cell">
-    <select class="inline-task-select" data-inline-field="${field}" data-task-key="${taskKey(task)}" aria-label="Edit ${field}">
+    <select class="inline-task-select ${taskToneClass(field, task[field])}" data-inline-field="${field}" data-task-key="${taskKey(task)}" aria-label="Edit ${field}">
       ${unique([...values, task[field]].filter(Boolean))
         .map((value) => `<option value="${escapeHtml(value)}" ${task[field] === value ? "selected" : ""}>${escapeHtml(value)}</option>`)
         .join("")}

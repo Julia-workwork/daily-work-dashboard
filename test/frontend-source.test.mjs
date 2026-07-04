@@ -363,8 +363,24 @@ test("task table presents direct inline editing controls", async () => {
 
   assert.match(source, /data-inline-field="\$\{field\}"/);
   assert.match(source, /direct-edit-cell/);
+  assert.match(source, /taskToneClass\(field,\s*task\[field\]\)/);
   assert.match(styles, /\.direct-edit-cell/);
   assert.match(styles, /\.inline-task-select/);
+});
+
+test("task inline chips use distinct colors for category, priority, and status", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+
+  assert.match(source, /function taskToneClass\(field,\s*value\)/);
+  for (const token of ["category-product", "category-content", "category-feedback", "category-data", "category-brand", "priority-p1", "priority-p2", "priority-p3", "status-progress", "status-waiting", "status-done"]) {
+    assert.match(source, new RegExp(token));
+    assert.match(styles, new RegExp(`\\.tone-${token}`));
+  }
+
+  assert.match(styles, /\.inline-task-select\.tone-priority-p1/);
+  assert.match(styles, /\.inline-task-select\.tone-category-content/);
+  assert.match(styles, /\.inline-task-select\.tone-status-progress/);
 });
 
 test("task table uses a compact command-list layout", async () => {

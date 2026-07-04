@@ -966,6 +966,97 @@ select {
   background: rgba(255, 255, 255, 0.86);
 }
 
+.inline-task-select.tone-priority-p1 {
+  border-color: rgba(210, 226, 0, 0.54);
+  background: rgba(233, 255, 45, 0.52);
+  color: #171900;
+}
+
+.inline-task-select.tone-priority-p2 {
+  border-color: rgba(79, 140, 255, 0.26);
+  background: rgba(218, 232, 255, 0.66);
+  color: #163a73;
+}
+
+.inline-task-select.tone-priority-p3,
+.inline-task-select.tone-neutral {
+  border-color: rgba(15, 23, 42, 0.08);
+  background: rgba(245, 246, 248, 0.82);
+  color: #4b5563;
+}
+
+.inline-task-select.tone-status-progress {
+  border-color: rgba(0, 113, 227, 0.26);
+  background: rgba(220, 238, 255, 0.76);
+  color: #064f9e;
+}
+
+.inline-task-select.tone-status-waiting {
+  border-color: rgba(214, 126, 0, 0.26);
+  background: rgba(255, 236, 208, 0.78);
+  color: #815000;
+}
+
+.inline-task-select.tone-status-review {
+  border-color: rgba(200, 225, 0, 0.48);
+  background: rgba(235, 255, 74, 0.62);
+  color: #273000;
+}
+
+.inline-task-select.tone-status-done {
+  border-color: rgba(52, 168, 83, 0.26);
+  background: rgba(219, 245, 226, 0.78);
+  color: #196329;
+}
+
+.inline-task-select.tone-status-not-started {
+  border-color: rgba(15, 23, 42, 0.08);
+  background: rgba(244, 245, 247, 0.78);
+  color: #4b5563;
+}
+
+.inline-task-select.tone-category-product {
+  border-color: rgba(0, 113, 227, 0.24);
+  background: rgba(224, 239, 255, 0.78);
+  color: #064f9e;
+}
+
+.inline-task-select.tone-category-content {
+  border-color: rgba(175, 82, 222, 0.24);
+  background: rgba(244, 230, 255, 0.78);
+  color: #6c2aa0;
+}
+
+.inline-task-select.tone-category-feedback {
+  border-color: rgba(255, 149, 0, 0.28);
+  background: rgba(255, 235, 208, 0.78);
+  color: #8a5200;
+}
+
+.inline-task-select.tone-category-data {
+  border-color: rgba(0, 160, 150, 0.24);
+  background: rgba(218, 246, 242, 0.78);
+  color: #087064;
+}
+
+.inline-task-select.tone-category-brand {
+  border-color: rgba(230, 57, 120, 0.24);
+  background: rgba(255, 225, 237, 0.78);
+  color: #9b1749;
+}
+
+.inline-task-select.tone-category-social {
+  border-color: rgba(88, 86, 214, 0.22);
+  background: rgba(232, 231, 255, 0.76);
+  color: #3d38a2;
+}
+
+.inline-task-select.tone-category-operations {
+  border-color: rgba(99, 99, 102, 0.18);
+  background: rgba(239, 239, 244, 0.82);
+  color: #3a3a3c;
+}
+
 .inline-task-select:disabled {
   cursor: wait;
   opacity: 0.62;
