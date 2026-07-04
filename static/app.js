@@ -280,6 +280,107 @@ function saveDailyRoutineState(nextState) {
   return stateForToday;
 }
 
+function dailyRoutineTaskName() {
+  return `[JL] Daily Routine - ${todayIso()}`;
+}
+
+function findDailyRoutineTask(data) {
+  const name = dailyRoutineTaskName();
+  return allTasks(data).find((task) => normalizeEscapedText(task.taskName) === name);
+}
+
+function parseDailyRoutineTask(task) {
+  const text = normalizeEscapedText(task?.nextAction || "");
+  const emails = text.match(/Handled\s+(\d+)\s+emails/i);
+  const posts = text.match(/published\s+(\d+)\s+posts/i);
+  return {
+    date: todayIso(),
+    emailsDone: Boolean(emails),
+    emailsCount: emails?.[1] || "",
+    groupsDone: /checked\s+3\s+groups/i.test(text),
+    postsDone: Boolean(posts),
+    postsCount: posts?.[1] || "",
+    sourceId: task?.sourceId || "",
+    sourceType: task?.sourceType || "workflow-task",
+    notionUrl: task?.notionUrl || "",
+  };
+}
+
+function hasRoutineInput(routine) {
+  return Boolean(routine.emailsDone || routine.groupsDone || routine.postsDone || routine.emailsCount || routine.postsCount || routine.sourceId);
+}
+
+function dailyRoutineStateForData(data) {
+  const localRoutine = loadDailyRoutineState();
+  const existingTask = data ? findDailyRoutineTask(data) : null;
+  if (!existingTask || hasRoutineInput(localRoutine)) return localRoutine;
+  const parsed = parseDailyRoutineTask(existingTask);
+  saveDailyRoutineState(parsed);
+  return parsed;
+}
+
+function dailyRoutineTaskPayload(routine) {
+  const emailCount = Number(routine.emailsCount || 0);
+  const postCount = Number(routine.postsCount || 0);
+  const isComplete = Boolean(routine.emailsDone && routine.groupsDone && routine.postsDone);
+  const parts = [
+    routine.emailsDone ? `Handled ${emailCount} emails` : "Email handling pending",
+    routine.groupsDone ? "checked 3 groups" : "group check pending",
+    routine.postsDone ? `published ${postCount} posts` : "post publishing pending",
+  ];
+  return {
+    taskName: dailyRoutineTaskName(),
+    nextAction: `[JL] Daily Routine: ${parts.join("; ")}.`,
+    category: "Julia",
+    priority: "P2",
+    status: isComplete ? "Done" : "In Progress",
+    dueDate: todayIso(),
+    sourceDate: todayIso(),
+    completedDate: isComplete ? todayIso() : "",
+    needsReview: false,
+  };
+}
+
+function upsertTaskInData(data, task) {
+  const matches = (candidate) => {
+    if (task.sourceId && candidate.sourceId === task.sourceId) return true;
+    return normalizeEscapedText(candidate.taskName) === normalizeEscapedText(task.taskName) && candidate.dueDate === task.dueDate;
+  };
+  const index = data.tasks.findIndex(matches);
+  if (index >= 0) {
+    data.tasks[index] = { ...data.tasks[index], ...task };
+  } else {
+    data.tasks = [task, ...data.tasks];
+  }
+}
+
+async function saveDailyRoutineToNotion(data, routine) {
+  const existingTask = findDailyRoutineTask(data);
+  const task = {
+    ...dailyRoutineTaskPayload(routine),
+    sourceId: existingTask?.sourceId || routine.sourceId || "",
+    sourceType: existingTask?.sourceType || routine.sourceType || "workflow-task",
+    notionUrl: existingTask?.notionUrl || routine.notionUrl || "",
+  };
+
+  const result = task.sourceId ? await saveTaskEdit(task) : await saveTaskToNotion(task);
+  const savedTask = {
+    ...task,
+    ...(result.task || {}),
+    sourceId: result.sourceId || result.task?.sourceId || task.sourceId,
+    sourceType: result.sourceType || result.task?.sourceType || "workflow-task",
+    notionUrl: result.notionUrl || result.task?.notionUrl || task.notionUrl,
+  };
+  upsertTaskInData(data, savedTask);
+  saveDailyRoutineState({
+    ...routine,
+    sourceId: savedTask.sourceId,
+    sourceType: savedTask.sourceType,
+    notionUrl: savedTask.notionUrl,
+  });
+  return savedTask;
+}
+
 function taskStatusChips(task) {
   const chips = [chip(task.priority, priorityClass(task.priority)), chip(task.status, statusClass(task.status))];
   if (task.dueDate) chips.push(chip(task.dueDate, task.dueDate === todayIso() ? "due-today" : "due-date"));
@@ -1387,8 +1488,8 @@ function bindTaskCreator(data) {
   });
 }
 
-function dailyRoutinePanel() {
-  const routine = loadDailyRoutineState();
+function dailyRoutinePanel(data) {
+  const routine = dailyRoutineStateForData(data);
   const checked = (value) => (value ? "checked" : "");
   return `
     <section class="daily-routine-panel" aria-label="Daily Routine">
@@ -1418,17 +1519,36 @@ function dailyRoutinePanel() {
           <input class="routine-number" type="number" min="0" inputmode="numeric" aria-label="Post count" data-routine-field="postsCount" value="${escapeHtml(routine.postsCount)}" placeholder="0" />
         </article>
       </div>
+      <p class="routine-save-status" data-routine-save-status>${routine.sourceId ? "Synced to Notion for today." : "Not saved to Notion yet."}</p>
     </section>
   `;
 }
 
-function bindDailyRoutine() {
+function bindDailyRoutine(data) {
   const panel = elements.tasks.querySelector(".daily-routine-panel");
   if (!panel) return;
+  const status = panel.querySelector("[data-routine-save-status]");
   const updateItemState = (control) => {
     const item = control.closest(".routine-item");
     const checkbox = item?.querySelector('input[type="checkbox"]');
     item?.classList.toggle("is-done", Boolean(checkbox?.checked));
+  };
+  const persistRoutine = async () => {
+    const routine = loadDailyRoutineState();
+    if (status) status.textContent = "Saving routine to Notion...";
+    panel.querySelectorAll("[data-routine-field]").forEach((control) => {
+      control.disabled = true;
+    });
+    try {
+      await saveDailyRoutineToNotion(data, routine);
+      if (status) status.textContent = "Saved to Notion. Included in reports.";
+    } catch (error) {
+      if (status) status.textContent = error instanceof Error ? error.message : "Could not save routine to Notion.";
+    } finally {
+      panel.querySelectorAll("[data-routine-field]").forEach((control) => {
+        control.disabled = false;
+      });
+    }
   };
   panel.querySelectorAll("[data-routine-field]").forEach((control) => {
     control.addEventListener("change", () => {
@@ -1436,11 +1556,18 @@ function bindDailyRoutine() {
       const value = control.type === "checkbox" ? control.checked : control.value;
       saveDailyRoutineState({ ...current, [control.dataset.routineField]: value });
       updateItemState(control);
+      persistRoutine();
     });
     control.addEventListener("input", () => {
       if (control.type === "checkbox") return;
       const current = loadDailyRoutineState();
       saveDailyRoutineState({ ...current, [control.dataset.routineField]: control.value });
+    });
+    control.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        control.blur();
+      }
     });
   });
 }
@@ -1463,7 +1590,7 @@ function renderTasks(data) {
       </div>
       <button class="text-action primary-action" type="button" data-open-task>New Task</button>
     </section>
-    ${dailyRoutinePanel()}
+    ${dailyRoutinePanel(data)}
     <article class="zine-panel">${taskTable(tasks, taskPool)}</article>
     ${taskForm(data)}
     ${taskEditForm(data)}
@@ -1476,7 +1603,7 @@ function renderTasks(data) {
       renderTasks(data);
     });
   });
-  bindDailyRoutine();
+  bindDailyRoutine(data);
   bindTaskCreator(data);
   bindTaskEditor(data, elements.tasks);
   bindEditTaskButtons(data, elements.tasks);

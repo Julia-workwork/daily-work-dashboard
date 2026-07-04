@@ -448,18 +448,38 @@ test("tasks page includes a daily routine checklist with numeric counts", async 
   assert.match(source, /DAILY_ROUTINE_STORAGE_KEY/);
   assert.match(source, /function loadDailyRoutineState\(\)/);
   assert.match(source, /function saveDailyRoutineState/);
-  assert.match(source, /function dailyRoutinePanel\(\)/);
-  assert.match(source, /function bindDailyRoutine\(\)/);
+  assert.match(source, /function dailyRoutinePanel\(data\)/);
+  assert.match(source, /function bindDailyRoutine\(data\)/);
   assert.match(source, /data-routine-field="emailsCount"/);
   assert.match(source, /data-routine-field="postsCount"/);
   for (const label of ["Daily Routine", "Handle emails", "Check 3 groups", "Publish post"]) {
     assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
-  assert.match(renderTasksBlock, /dailyRoutinePanel\(\)/);
-  assert.match(renderTasksBlock, /bindDailyRoutine\(\)/);
+  assert.match(renderTasksBlock, /dailyRoutinePanel\(data\)/);
+  assert.match(renderTasksBlock, /bindDailyRoutine\(data\)/);
   assert.match(styles, /\.daily-routine-panel/);
   assert.match(styles, /\.routine-number/);
   assert.match(styles, /\.routine-item\.is-done/);
+});
+
+test("daily routine saves one Notion record per day for reporting", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /function dailyRoutineTaskName\(\)/);
+  assert.match(source, /\`\[JL\] Daily Routine - \$\{todayIso\(\)\}\`/);
+  assert.match(source, /function findDailyRoutineTask\(data\)/);
+  assert.match(source, /function parseDailyRoutineTask\(task\)/);
+  assert.match(source, /function dailyRoutineStateForData\(data\)/);
+  assert.match(source, /function dailyRoutineTaskPayload\(routine\)/);
+  assert.match(source, /function saveDailyRoutineToNotion\(data,\s*routine\)/);
+  assert.match(source, /await saveTaskEdit\(task\)/);
+  assert.match(source, /await saveTaskToNotion\(task\)/);
+  assert.match(source, /sourceDate:\s*todayIso\(\)/);
+  assert.match(source, /category:\s*"Julia"/);
+  assert.match(source, /priority:\s*"P2"/);
+  assert.match(source, /data-routine-save-status/);
+  assert.match(source, /Handled \$\{emailCount\} emails/);
+  assert.match(source, /published \$\{postCount\} posts/);
 });
 
 test("overview focus items keep edit and colored status chips in one action area", async () => {

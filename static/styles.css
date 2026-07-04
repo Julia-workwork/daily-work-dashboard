@@ -838,6 +838,12 @@ select {
   text-align: center;
 }
 
+.routine-save-status {
+  grid-column: 2;
+  color: #687183;
+  font: 650 12px/1.25 var(--system-font);
+}
+
 .primary-action {
   background: rgba(5, 5, 5, 0.92);
   color: white;
