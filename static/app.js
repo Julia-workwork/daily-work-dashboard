@@ -1638,8 +1638,8 @@ function taskBoardOngoingPanel(data, taskPool) {
         <div class="ongoing-list">
           ${ongoingItems.length ? ongoingItems.map(ongoingCard).join("") : '<p class="empty">No weekly ongoing items captured yet.</p>'}
         </div>
-        <form class="ongoing-create-form" data-ongoing-form>
-          <input data-ongoing-input name="ongoing" placeholder="Add ongoing work for this week" />
+          <form class="ongoing-create-form" data-ongoing-form novalidate>
+          <input data-ongoing-input name="ongoing" required placeholder="Add ongoing work for this week" />
           <button class="text-action primary-action" type="submit">Add Ongoing</button>
         </form>
         <p class="routine-save-status" data-ongoing-save-status></p>
@@ -1657,7 +1657,11 @@ function bindOngoingCreator(data) {
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = normalizeEscapedText(input?.value || "");
-    if (!text) return;
+    if (!text) {
+      if (status) status.textContent = "Type ongoing work first.";
+      input?.focus();
+      return;
+    }
     const submit = form.querySelector("button[type=submit]");
     const task = ongoingTaskPayload(text, weekRange);
     submit.disabled = true;

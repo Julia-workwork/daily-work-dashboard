@@ -498,6 +498,9 @@ test("task board supports synced this week ongoing work", async () => {
   assert.match(source, /data-ongoing-form/);
   assert.match(source, /data-ongoing-input/);
   assert.match(source, /data-ongoing-save-status/);
+  assert.match(source, /Type ongoing work first/);
+  assert.match(source, /data-ongoing-form novalidate/);
+  assert.match(source, /data-ongoing-input name="ongoing" required/);
   assert.match(source, /saveTaskToNotion\(task\)/);
   assert.match(renderTasksBlock, /taskBoardOngoingPanel\(data,\s*taskPool\)/);
   assert.match(renderTasksBlock, /bindOngoingCreator\(data\)/);
