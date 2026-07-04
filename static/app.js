@@ -948,8 +948,8 @@ function renderOverview(data) {
   `;
 
   bindJumpButtons();
-  bindTaskEditor(data);
-  bindEditTaskButtons(data);
+  bindTaskEditor(data, elements.overview);
+  bindEditTaskButtons(data, elements.overview);
 }
 
 function filterSelect(label, key, values) {
@@ -1258,13 +1258,13 @@ function fillTaskEditForm(form, task) {
   form.elements.needsReview.checked = Boolean(task.needsReview);
 }
 
-function bindEditTaskButtons(data) {
-  document.querySelectorAll("[data-edit-task]").forEach((button) => {
+function bindEditTaskButtons(data, root = document) {
+  root.querySelectorAll("[data-edit-task]").forEach((button) => {
     button.addEventListener("click", () => {
       const task = findTaskByKey(data, button.dataset.editTask);
-      const dialog = document.querySelector("#task-edit-dialog");
-      const form = document.querySelector("#task-edit-form");
-      const note = document.querySelector("[data-edit-source-note]");
+      const dialog = root.querySelector("#task-edit-dialog");
+      const form = root.querySelector("#task-edit-form");
+      const note = root.querySelector("[data-edit-source-note]");
       if (!task || !dialog || !form) return;
       form.dataset.taskKey = taskKey(task);
       fillTaskEditForm(form, task);
@@ -1281,11 +1281,11 @@ function bindEditTaskButtons(data) {
   });
 }
 
-function bindTaskEditor(data) {
-  const dialog = document.querySelector("#task-edit-dialog");
-  const form = document.querySelector("#task-edit-form");
-  const status = document.querySelector("[data-edit-save-status]");
-  document.querySelectorAll("[data-close-edit-task]").forEach((button) => {
+function bindTaskEditor(data, root = document) {
+  const dialog = root.querySelector("#task-edit-dialog");
+  const form = root.querySelector("#task-edit-form");
+  const status = root.querySelector("[data-edit-save-status]");
+  root.querySelectorAll("[data-close-edit-task]").forEach((button) => {
     button.addEventListener("click", () => dialog?.close());
   });
   form?.addEventListener("submit", async (event) => {
@@ -1388,8 +1388,8 @@ function renderTasks(data) {
     });
   });
   bindTaskCreator(data);
-  bindTaskEditor(data);
-  bindEditTaskButtons(data);
+  bindTaskEditor(data, elements.tasks);
+  bindEditTaskButtons(data, elements.tasks);
   bindInlineTaskControls(data);
 }
 

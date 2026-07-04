@@ -288,8 +288,21 @@ test("overview focus items include a working edit dialog", async () => {
 
   assert.match(renderOverviewBlock, /focusTasks\.map\(taskRow\)/);
   assert.match(renderOverviewBlock, /taskEditForm\(data\)/);
-  assert.match(renderOverviewBlock, /bindTaskEditor\(data\)/);
-  assert.match(renderOverviewBlock, /bindEditTaskButtons\(data\)/);
+  assert.match(renderOverviewBlock, /bindTaskEditor\(data,\s*elements\.overview\)/);
+  assert.match(renderOverviewBlock, /bindEditTaskButtons\(data,\s*elements\.overview\)/);
+});
+
+test("task edit bindings are scoped to the active view container", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /function bindEditTaskButtons\(data,\s*root = document\)/);
+  assert.match(source, /function bindTaskEditor\(data,\s*root = document\)/);
+  assert.match(source, /root\.querySelector\("#task-edit-dialog"\)/);
+  assert.match(source, /root\.querySelectorAll\("\[data-edit-task\]"\)/);
+  assert.match(source, /bindTaskEditor\(data,\s*elements\.overview\)/);
+  assert.match(source, /bindEditTaskButtons\(data,\s*elements\.overview\)/);
+  assert.match(source, /bindTaskEditor\(data,\s*elements\.tasks\)/);
+  assert.match(source, /bindEditTaskButtons\(data,\s*elements\.tasks\)/);
 });
 
 test("frontend keeps edit available for tasks without source ids by saving a workflow task copy", async () => {
