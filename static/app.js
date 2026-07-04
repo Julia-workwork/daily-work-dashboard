@@ -124,6 +124,15 @@ function isDone(task) {
   return task.status === "Done";
 }
 
+function isWorkflowOngoingTask(task) {
+  const text = normalizeEscapedText([task.taskName, task.nextAction].filter(Boolean).join(" "));
+  return /\[JL\]\s*Ongoing|Ongoing\s*-/i.test(text);
+}
+
+function workflowOngoingReportText(task) {
+  return `[JL] ${normalizeEscapedText(task.nextAction || task.taskName || "Ongoing work")}`;
+}
+
 function unique(values) {
   return [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right, "en"));
 }
@@ -768,8 +777,8 @@ function reportItemsForMonth(data, monthKey) {
       return {
         date,
         week: reportWeekLabel(data, date),
-        text: reportSourceText(task),
-        type: "task",
+        text: isWorkflowOngoingTask(task) ? workflowOngoingReportText(task) : reportSourceText(task),
+        type: isWorkflowOngoingTask(task) ? "ongoing" : "task",
         done: isDone(task),
       };
     })
@@ -874,10 +883,27 @@ function selectedWeeklyReport(monthly) {
 }
 
 function weeklyOngoingItems(data, weekRange) {
-  return data.dailyExtracts
+  const dailyOngoing = data.dailyExtracts
     .filter((item) => item.weekRange === weekRange && isOngoingRecord(item))
     .flatMap(recordItems)
     .filter((item) => item.text);
+  const taskOngoing = data.tasks
+    .filter((task) => {
+      const date = task.sourceDate || task.completedDate || task.dueDate;
+      return isWorkflowOngoingTask(task) && reportWeekLabel(data, date) === weekRange;
+    })
+    .map((task) => {
+      const date = task.sourceDate || task.completedDate || task.dueDate;
+      return {
+        date,
+        week: reportWeekLabel(data, date),
+        text: workflowOngoingReportText(task),
+        type: "ongoing",
+        done: isDone(task),
+        task: task,
+      };
+    });
+  return [...dailyOngoing, ...taskOngoing].filter((item) => item.text);
 }
 
 function dailyRecordGroups(data, weekRange) {
@@ -989,6 +1015,7 @@ function overviewWeeklyDraft(report) {
 }
 
 function ongoingCard(item, index) {
+  const actions = item.task ? `<div class="ongoing-actions">${editTaskButton(item.task, "compact-action")}</div>` : "";
   return `
     <article class="ongoing-item ${item.done ? "is-done" : ""}">
       <span>${String(index + 1).padStart(2, "0")}</span>
@@ -996,6 +1023,7 @@ function ongoingCard(item, index) {
         <h3>${escapeHtml(displayReportText(item.text))}</h3>
         <p>${item.done ? "Completed this week" : "Still moving"}</p>
       </div>
+      ${actions}
     </article>
   `;
 }
@@ -1572,6 +1600,87 @@ function bindDailyRoutine(data) {
   });
 }
 
+function taskBoardWeekRange(data, taskPool) {
+  if (state.filters.week !== "All") return state.filters.week;
+  void taskPool;
+  return reportWeekLabel(data, todayIso());
+}
+
+function weekRangeEndDate(weekRange) {
+  return parseWeekRangeLabel(weekRange)?.end || todayIso();
+}
+
+function ongoingTaskPayload(text, weekRange) {
+  const cleaned = normalizeEscapedText(text);
+  return {
+    taskName: `[JL] Ongoing - ${cleaned}`,
+    nextAction: cleaned,
+    category: "Julia",
+    priority: "P2",
+    status: "In Progress",
+    dueDate: weekRangeEndDate(weekRange),
+    sourceDate: todayIso(),
+    completedDate: "",
+    needsReview: false,
+  };
+}
+
+function taskBoardOngoingPanel(data, taskPool) {
+  const weekRange = taskBoardWeekRange(data, taskPool);
+  const ongoingItems = weeklyOngoingItems(data, weekRange).slice(0, 6);
+  return `
+    <section class="task-ongoing-panel" aria-label="This Week Ongoing">
+      <div class="routine-heading">
+        <p>This Week Ongoing</p>
+        <h2>${escapeHtml(weekRange)}</h2>
+      </div>
+      <div class="task-ongoing-body">
+        <div class="ongoing-list">
+          ${ongoingItems.length ? ongoingItems.map(ongoingCard).join("") : '<p class="empty">No weekly ongoing items captured yet.</p>'}
+        </div>
+        <form class="ongoing-create-form" data-ongoing-form>
+          <input data-ongoing-input name="ongoing" placeholder="Add ongoing work for this week" />
+          <button class="text-action primary-action" type="submit">Add Ongoing</button>
+        </form>
+        <p class="routine-save-status" data-ongoing-save-status></p>
+      </div>
+    </section>
+  `;
+}
+
+function bindOngoingCreator(data) {
+  const form = elements.tasks.querySelector("[data-ongoing-form]");
+  const input = elements.tasks.querySelector("[data-ongoing-input]");
+  const status = elements.tasks.querySelector("[data-ongoing-save-status]");
+  const taskPool = allTasks(data);
+  const weekRange = taskBoardWeekRange(data, taskPool);
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = normalizeEscapedText(input?.value || "");
+    if (!text) return;
+    const submit = form.querySelector("button[type=submit]");
+    const task = ongoingTaskPayload(text, weekRange);
+    submit.disabled = true;
+    if (status) status.textContent = "Saving ongoing work to Notion...";
+    try {
+      const result = await saveTaskToNotion(task);
+      const savedTask = {
+        ...task,
+        sourceId: result.sourceId || "",
+        sourceType: result.sourceType || "workflow-task",
+        notionUrl: result.notionUrl || "",
+      };
+      upsertTaskInData(data, savedTask);
+      if (status) status.textContent = "Saved to Notion. Included in reports.";
+      renderTasks(data);
+    } catch (error) {
+      if (status) status.textContent = error instanceof Error ? error.message : "Could not save ongoing work to Notion.";
+    } finally {
+      submit.disabled = false;
+    }
+  });
+}
+
 function renderTasks(data) {
   const tasks = filteredTasks(data);
   const taskPool = allTasks(data);
@@ -1591,6 +1700,7 @@ function renderTasks(data) {
       <button class="text-action primary-action" type="button" data-open-task>New Task</button>
     </section>
     ${dailyRoutinePanel(data)}
+    ${taskBoardOngoingPanel(data, taskPool)}
     <article class="zine-panel">${taskTable(tasks, taskPool)}</article>
     ${taskForm(data)}
     ${taskEditForm(data)}
@@ -1604,6 +1714,7 @@ function renderTasks(data) {
     });
   });
   bindDailyRoutine(data);
+  bindOngoingCreator(data);
   bindTaskCreator(data);
   bindTaskEditor(data, elements.tasks);
   bindEditTaskButtons(data, elements.tasks);

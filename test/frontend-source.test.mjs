@@ -482,6 +482,41 @@ test("daily routine saves one Notion record per day for reporting", async () => 
   assert.match(source, /published \$\{postCount\} posts/);
 });
 
+test("task board supports synced this week ongoing work", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+  const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /function isWorkflowOngoingTask\(task\)/);
+  assert.match(source, /function taskBoardWeekRange\(data,\s*taskPool\)/);
+  assert.match(source, /function ongoingTaskPayload\(text,\s*weekRange\)/);
+  assert.match(source, /taskName:\s*`\[JL\] Ongoing - \$\{cleaned\}`/);
+  assert.match(source, /status:\s*"In Progress"/);
+  assert.match(source, /category:\s*"Julia"/);
+  assert.match(source, /function taskBoardOngoingPanel\(data,\s*taskPool\)/);
+  assert.match(source, /function bindOngoingCreator\(data\)/);
+  assert.match(source, /data-ongoing-form/);
+  assert.match(source, /data-ongoing-input/);
+  assert.match(source, /data-ongoing-save-status/);
+  assert.match(source, /saveTaskToNotion\(task\)/);
+  assert.match(renderTasksBlock, /taskBoardOngoingPanel\(data,\s*taskPool\)/);
+  assert.match(renderTasksBlock, /bindOngoingCreator\(data\)/);
+  assert.match(styles, /\.task-ongoing-panel/);
+  assert.match(styles, /\.ongoing-create-form/);
+});
+
+test("workflow ongoing tasks are included in weekly and monthly ongoing reports", async () => {
+  const source = await read("../static/app.js");
+  const reportItemsBlock = source.match(/function reportItemsForMonth\(data,\s*monthKey\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const weeklyOngoingBlock = source.match(/function weeklyOngoingItems\(data,\s*weekRange\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(reportItemsBlock, /type:\s*isWorkflowOngoingTask\(task\) \? "ongoing" : "task"/);
+  assert.match(weeklyOngoingBlock, /data\.tasks/);
+  assert.match(weeklyOngoingBlock, /isWorkflowOngoingTask\(task\)/);
+  assert.match(weeklyOngoingBlock, /reportWeekLabel\(data,\s*date\) === weekRange/);
+  assert.match(weeklyOngoingBlock, /task:\s*task/);
+});
+
 test("overview focus items keep edit and colored status chips in one action area", async () => {
   const source = await read("../static/app.js");
   const styles = await read("../static/styles.css");
