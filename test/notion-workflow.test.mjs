@@ -101,6 +101,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
                   "Due Date": { date: { start: "2026-06-22" } },
                   "Created Time": { created_time: "2026-07-04T06:35:00.000Z" },
                   "Next Action": { rich_text: [{ plain_text: "Ask for test video" }] },
+                  "Work Log": { rich_text: [{ plain_text: "Handled 5 emails" }] },
                   Review: { checkbox: true },
                 },
               },
@@ -118,6 +119,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
   assert.equal(tasks[0].sourceId, "task-page-id");
   assert.equal(tasks[0].sourceType, "workflow-task");
   assert.equal(tasks[0].status, "In Progress");
+  assert.equal(tasks[0].workLog, "Handled 5 emails");
   assert.equal(tasks[0].needsReview, true);
   assert.equal(tasks[0].notionLink, "https://notion.so/task");
   assert.equal(tasks[0].recordTime, "2026-07-04T06:35:00.000Z");
@@ -180,8 +182,8 @@ test("fetchDailyWorkBlocks maps Notion todo blocks into editable daily source ta
   );
 
   assert.equal(source.tasks[1][0], "[PL][TBD] Message 白底图拍摄");
-  assert.equal(source.tasks[1][10], "todo-block");
-  assert.equal(source.tasks[1][11], "daily-work");
+  assert.equal(source.tasks[1][source.tasks[0].indexOf("Source ID")], "todo-block");
+  assert.equal(source.tasks[1][source.tasks[0].indexOf("Source Type")], "daily-work");
 });
 
 test("fetchDailyWorkBlocks maps weekly ongoing todo ids into editable source tasks", async () => {
@@ -241,8 +243,8 @@ test("fetchDailyWorkBlocks maps weekly ongoing todo ids into editable source tas
   );
 
   assert.equal(source.tasks[1][0], "[PL] Message beta follow up");
-  assert.equal(source.tasks[1][10], "ongoing-todo");
-  assert.equal(source.tasks[1][11], "daily-work");
+  assert.equal(source.tasks[1][source.tasks[0].indexOf("Source ID")], "ongoing-todo");
+  assert.equal(source.tasks[1][source.tasks[0].indexOf("Source Type")], "daily-work");
 });
 
 test("updateDailyWorkTodo patches the source Notion todo block", async () => {

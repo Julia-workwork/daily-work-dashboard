@@ -10,6 +10,7 @@ test("buildNotionTaskPayload maps dashboard task fields to Workflow Tasks proper
     category: "Content",
     dueDate: "2026-06-22",
     nextAction: "检查字幕并发布 YouTube",
+    workLog: "完成粗剪 1 条",
     needsReview: true,
   });
 
@@ -20,6 +21,7 @@ test("buildNotionTaskPayload maps dashboard task fields to Workflow Tasks proper
     Category: { select: { name: "Content" } },
     "Due Date": { date: { start: "2026-06-22" } },
     "Next Action": { rich_text: [{ text: { content: "检查字幕并发布 YouTube" } }] },
+    "Work Log": { rich_text: [{ text: { content: "完成粗剪 1 条" } }] },
     "Needs Review": { checkbox: true },
   });
 });

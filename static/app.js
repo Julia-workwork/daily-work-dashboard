@@ -299,7 +299,7 @@ function findDailyRoutineTask(data) {
 }
 
 function parseDailyRoutineTask(task) {
-  const text = normalizeEscapedText(task?.nextAction || "");
+  const text = normalizeEscapedText(task?.workLog || task?.nextAction || "");
   const emails = text.match(/Handled\s+(\d+)\s+emails/i);
   const posts = text.match(/published\s+(\d+)\s+posts/i);
   return {
@@ -339,7 +339,8 @@ function dailyRoutineTaskPayload(routine) {
   ];
   return {
     taskName: dailyRoutineTaskName(),
-    nextAction: `[JL] Daily Routine: ${parts.join("; ")}.`,
+    nextAction: "",
+    workLog: `[JL] Daily Routine: ${parts.join("; ")}.`,
     category: "Julia",
     priority: "P2",
     status: isComplete ? "Done" : "In Progress",
@@ -488,6 +489,7 @@ function reportSourceText(item) {
     item.tomorrowReminders,
     item.weeklyReportCandidate,
     item.notes,
+    item.workLog,
     item.taskName,
     item.nextAction,
     item.category,

@@ -478,6 +478,9 @@ test("daily routine saves one Notion record per day for reporting", async () => 
   assert.match(source, /sourceDate:\s*todayIso\(\)/);
   assert.match(source, /category:\s*"Julia"/);
   assert.match(source, /priority:\s*"P2"/);
+  assert.match(source, /workLog:\s*`\[JL\] Daily Routine: \$\{parts\.join\("; "\)\}\.`/);
+  assert.match(source, /nextAction:\s*""/);
+  assert.match(source, /task\?\.workLog \|\| task\?\.nextAction/);
   assert.match(source, /data-routine-save-status/);
   assert.match(source, /Handled \$\{emailCount\} emails/);
   assert.match(source, /published \$\{postCount\} posts/);
