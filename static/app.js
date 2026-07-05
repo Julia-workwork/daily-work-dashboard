@@ -201,7 +201,7 @@ function taskFromForm(form) {
     nextAction: normalizeEscapedText(formData.get("nextAction")),
     category: String(formData.get("category") || "").trim() || "Other",
     priority: String(formData.get("priority") || "P2"),
-    status: String(formData.get("status") || "Not started"),
+    status: String(formData.get("status") || "Not Started"),
     dueDate: cleanInputDate(formData.get("dueDate")),
     sourceDate: todayIso(),
     completedDate: "",
@@ -1015,13 +1015,20 @@ function overviewWeeklyDraft(report) {
 }
 
 function ongoingCard(item, index) {
+  const task = item.task;
+  const title = ongoingDisplayTitle(task, item.text);
+  const progress = cleanTaskText(task?.nextAction || item.text) || "No current progress captured yet.";
+  const stamps = task
+    ? [chip(task.category || "Julia", taskToneClass("category", task.category || "Julia").replace("tone-", "")), taskStatusChips(task)].join("")
+    : chip(item.done ? "Done" : "In Progress", item.done ? "status-done" : "status-progress");
   const actions = item.task ? `<div class="ongoing-actions">${editTaskButton(item.task, "compact-action")}</div>` : "";
   return `
     <article class="ongoing-item ${item.done ? "is-done" : ""}">
-      <span>${String(index + 1).padStart(2, "0")}</span>
-      <div>
-        <h3>${escapeHtml(displayReportText(item.text))}</h3>
-        <p>${item.done ? "Completed this week" : "Still moving"}</p>
+      <span class="ongoing-index">${String(index + 1).padStart(2, "0")}</span>
+      <div class="ongoing-item-copy">
+        <h3>${escapeHtml(title)}</h3>
+        <p class="ongoing-item-progress"><strong>Current Progress</strong>${escapeHtml(progress)}</p>
+        <div class="ongoing-item-stamps">${stamps}</div>
       </div>
       ${actions}
     </article>
@@ -1249,7 +1256,7 @@ function taskForm(data) {
           <label>
             <span>Status</span>
             <select name="status">
-              ${unique([...data.tasks.map((task) => task.status), "Not started", "In progress", "Done"]).map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}
+              ${unique([...data.tasks.map((task) => task.status), "Not Started", "In Progress", "Waiting on Others", "Done"]).map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}
             </select>
           </label>
         </div>
@@ -1484,7 +1491,16 @@ function bindTaskCreator(data) {
   const dialog = elements.tasks.querySelector("#task-dialog");
   const form = elements.tasks.querySelector("#task-form");
   const status = elements.tasks.querySelector("[data-task-save-status]");
-  elements.tasks.querySelector("[data-open-task]")?.addEventListener("click", () => dialog?.showModal());
+  elements.tasks.querySelector("[data-open-task]")?.addEventListener("click", () => {
+    form?.reset();
+    if (form) {
+      form.elements.category.value = "Other";
+      form.elements.priority.value = "P2";
+      form.elements.status.value = "Not Started";
+    }
+    if (status) status.textContent = "";
+    dialog?.showModal();
+  });
   elements.tasks.querySelectorAll("[data-close-task]").forEach((button) => {
     button.addEventListener("click", () => dialog?.close());
   });
@@ -1498,6 +1514,8 @@ function bindTaskCreator(data) {
       const result = await saveTaskToNotion(task);
       state.localTasks.unshift({
         ...task,
+        sourceId: result.sourceId || "",
+        sourceType: result.sourceType || "workflow-task",
         notionUrl: result.notionUrl || "",
       });
       if (status) status.textContent = "Saved to Workflow Tasks.";
@@ -1524,6 +1542,7 @@ function dailyRoutinePanel(data) {
       <div class="routine-heading">
         <p>Daily Routine</p>
         <h2>Today’s fixed checks</h2>
+        <p class="routine-save-status" data-routine-save-status data-routine-status-wrap>${routine.sourceId ? "Synced to Notion for today." : "Not saved to Notion yet."}</p>
       </div>
       <div class="routine-list">
         <article class="routine-item ${routine.emailsDone ? "is-done" : ""}">
@@ -1547,7 +1566,6 @@ function dailyRoutinePanel(data) {
           <input class="routine-number" type="number" min="0" inputmode="numeric" aria-label="Post count" data-routine-field="postsCount" value="${escapeHtml(routine.postsCount)}" placeholder="0" />
         </article>
       </div>
-      <p class="routine-save-status" data-routine-save-status>${routine.sourceId ? "Synced to Notion for today." : "Not saved to Notion yet."}</p>
     </section>
   `;
 }
@@ -1625,6 +1643,11 @@ function ongoingTaskPayload(text, weekRange) {
   };
 }
 
+function ongoingDisplayTitle(task, fallbackText = "") {
+  const text = normalizeEscapedText(task?.taskName || fallbackText);
+  return cleanTaskText(text.replace(/^\[JL\]\s*Ongoing\s*-\s*/i, "")) || "Ongoing work";
+}
+
 function taskBoardOngoingPanel(data, taskPool) {
   const weekRange = taskBoardWeekRange(data, taskPool);
   const ongoingItems = weeklyOngoingItems(data, weekRange).slice(0, 6);
@@ -1633,55 +1656,42 @@ function taskBoardOngoingPanel(data, taskPool) {
       <div class="routine-heading">
         <p>This Week Ongoing</p>
         <h2>${escapeHtml(weekRange)}</h2>
+        <button class="text-action primary-action" type="button" data-open-ongoing>Add Ongoing</button>
       </div>
       <div class="task-ongoing-body">
         <div class="ongoing-list">
           ${ongoingItems.length ? ongoingItems.map(ongoingCard).join("") : '<p class="empty">No weekly ongoing items captured yet.</p>'}
         </div>
-          <form class="ongoing-create-form" data-ongoing-form novalidate>
-          <input data-ongoing-input name="ongoing" required placeholder="Add ongoing work for this week" />
-          <button class="text-action primary-action" type="submit">Add Ongoing</button>
-        </form>
         <p class="routine-save-status" data-ongoing-save-status></p>
       </div>
     </section>
   `;
 }
 
+function prefillOngoingTaskForm(form, weekRange) {
+  form.reset();
+  form.elements.taskName.value = "[JL] Ongoing - ";
+  form.elements.nextAction.value = "";
+  form.elements.category.value = "Julia";
+  form.elements.dueDate.value = cleanInputDate(weekRangeEndDate(weekRange));
+  form.elements.priority.value = "P2";
+  form.elements.status.value = "In Progress";
+  form.elements.needsReview.checked = false;
+}
+
 function bindOngoingCreator(data) {
-  const form = elements.tasks.querySelector("[data-ongoing-form]");
-  const input = elements.tasks.querySelector("[data-ongoing-input]");
+  const button = elements.tasks.querySelector("[data-open-ongoing]");
+  const dialog = elements.tasks.querySelector("#task-dialog");
+  const form = elements.tasks.querySelector("#task-form");
   const status = elements.tasks.querySelector("[data-ongoing-save-status]");
   const taskPool = allTasks(data);
   const weekRange = taskBoardWeekRange(data, taskPool);
-  form?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const text = normalizeEscapedText(input?.value || "");
-    if (!text) {
-      if (status) status.textContent = "Type ongoing work first.";
-      input?.focus();
-      return;
-    }
-    const submit = form.querySelector("button[type=submit]");
-    const task = ongoingTaskPayload(text, weekRange);
-    submit.disabled = true;
-    if (status) status.textContent = "Saving ongoing work to Notion...";
-    try {
-      const result = await saveTaskToNotion(task);
-      const savedTask = {
-        ...task,
-        sourceId: result.sourceId || "",
-        sourceType: result.sourceType || "workflow-task",
-        notionUrl: result.notionUrl || "",
-      };
-      upsertTaskInData(data, savedTask);
-      if (status) status.textContent = "Saved to Notion. Included in reports.";
-      renderTasks(data);
-    } catch (error) {
-      if (status) status.textContent = error instanceof Error ? error.message : "Could not save ongoing work to Notion.";
-    } finally {
-      submit.disabled = false;
-    }
+  button?.addEventListener("click", () => {
+    if (!dialog || !form) return;
+    prefillOngoingTaskForm(form, weekRange);
+    if (status) status.textContent = "Fill the ongoing details, then save to Notion.";
+    dialog.showModal();
+    form.elements.taskName.focus();
   });
 }
 

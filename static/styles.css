@@ -553,6 +553,11 @@ main {
   color: #4b5563;
 }
 
+.category-julia {
+  background: rgba(242, 228, 255, 0.78);
+  color: #6f2da8;
+}
+
 .status-progress {
   background: rgba(0, 113, 227, 0.12);
   color: #0756a5;
@@ -601,7 +606,7 @@ main {
   padding: 13px;
 }
 
-.ongoing-item span {
+.ongoing-index {
   display: grid;
   place-items: center;
   width: 34px;
@@ -612,7 +617,7 @@ main {
   font: 750 13px/1 var(--system-font);
 }
 
-.ongoing-item.is-done span {
+.ongoing-item.is-done .ongoing-index {
   background: rgba(52, 199, 89, 0.16);
   color: #126b30;
 }
@@ -626,6 +631,30 @@ main {
   margin-top: 5px;
   color: #687183;
   font: 600 12px/1.35 var(--system-font);
+}
+
+.ongoing-item-copy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ongoing-item-progress {
+  display: grid;
+  gap: 3px;
+}
+
+.ongoing-item-progress strong {
+  color: #8a93a3;
+  font: 750 10px/1 var(--system-font);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ongoing-item-stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .daily-record-list {
@@ -885,7 +914,6 @@ select {
 }
 
 .routine-save-status {
-  grid-column: 2;
   color: #687183;
   font: 650 12px/1.25 var(--system-font);
 }

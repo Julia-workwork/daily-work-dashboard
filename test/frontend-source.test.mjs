@@ -450,6 +450,7 @@ test("tasks page includes a daily routine checklist with numeric counts", async 
   assert.match(source, /function saveDailyRoutineState/);
   assert.match(source, /function dailyRoutinePanel\(data\)/);
   assert.match(source, /function bindDailyRoutine\(data\)/);
+  assert.match(source, /data-routine-status-wrap/);
   assert.match(source, /data-routine-field="emailsCount"/);
   assert.match(source, /data-routine-field="postsCount"/);
   for (const label of ["Daily Routine", "Handle emails", "Check 3 groups", "Publish post"]) {
@@ -495,17 +496,17 @@ test("task board supports synced this week ongoing work", async () => {
   assert.match(source, /category:\s*"Julia"/);
   assert.match(source, /function taskBoardOngoingPanel\(data,\s*taskPool\)/);
   assert.match(source, /function bindOngoingCreator\(data\)/);
-  assert.match(source, /data-ongoing-form/);
-  assert.match(source, /data-ongoing-input/);
+  assert.match(source, /data-open-ongoing/);
+  assert.match(source, /function prefillOngoingTaskForm\(form,\s*weekRange\)/);
+  assert.match(source, /Current Progress/);
   assert.match(source, /data-ongoing-save-status/);
-  assert.match(source, /Type ongoing work first/);
-  assert.match(source, /data-ongoing-form novalidate/);
-  assert.match(source, /data-ongoing-input name="ongoing" required/);
+  assert.match(source, /\[JL\] Ongoing - /);
+  assert.match(source, /state\.localTasks\.unshift\(\{\s*\.\.\.task,\s*sourceId:\s*result\.sourceId/s);
   assert.match(source, /saveTaskToNotion\(task\)/);
   assert.match(renderTasksBlock, /taskBoardOngoingPanel\(data,\s*taskPool\)/);
   assert.match(renderTasksBlock, /bindOngoingCreator\(data\)/);
   assert.match(styles, /\.task-ongoing-panel/);
-  assert.match(styles, /\.ongoing-create-form/);
+  assert.match(styles, /\.ongoing-item-progress/);
 });
 
 test("workflow ongoing tasks are included in weekly and monthly ongoing reports", async () => {
