@@ -113,6 +113,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
 
   assert.equal(requests[0].url, "https://api.notion.com/v1/data_sources/abc123/query");
   assert.equal(requests[0].options.method, "POST");
+  assert.deepEqual(JSON.parse(requests[0].options.body).sorts, [{ timestamp: "created_time", direction: "descending" }]);
   assert.equal(tasks[0].taskName, "Follow up John");
   assert.equal(tasks[0].sourceId, "task-page-id");
   assert.equal(tasks[0].sourceType, "workflow-task");

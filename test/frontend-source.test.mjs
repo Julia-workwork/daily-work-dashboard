@@ -487,6 +487,7 @@ test("task board supports synced this week ongoing work", async () => {
   const source = await read("../static/app.js");
   const styles = await read("../static/styles.css");
   const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const taskCreatorBlock = source.match(/function bindTaskCreator\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
 
   assert.match(source, /function isWorkflowOngoingTask\(task\)/);
   assert.match(source, /function taskBoardWeekRange\(data,\s*taskPool\)/);
@@ -501,7 +502,8 @@ test("task board supports synced this week ongoing work", async () => {
   assert.match(source, /Current Progress/);
   assert.match(source, /data-ongoing-save-status/);
   assert.match(source, /\[JL\] Ongoing - /);
-  assert.match(source, /state\.localTasks\.unshift\(\{\s*\.\.\.task,\s*sourceId:\s*result\.sourceId/s);
+  assert.match(taskCreatorBlock, /const savedTask = \{\s*\.\.\.task,\s*sourceId:\s*result\.sourceId/s);
+  assert.match(taskCreatorBlock, /upsertTaskInData\(data,\s*savedTask\)/);
   assert.match(source, /saveTaskToNotion\(task\)/);
   assert.match(renderTasksBlock, /taskBoardOngoingPanel\(data,\s*taskPool\)/);
   assert.match(renderTasksBlock, /bindOngoingCreator\(data\)/);

@@ -1512,12 +1512,13 @@ function bindTaskCreator(data) {
     if (status) status.textContent = "Saving to Notion...";
     try {
       const result = await saveTaskToNotion(task);
-      state.localTasks.unshift({
+      const savedTask = {
         ...task,
         sourceId: result.sourceId || "",
         sourceType: result.sourceType || "workflow-task",
         notionUrl: result.notionUrl || "",
-      });
+      };
+      upsertTaskInData(data, savedTask);
       if (status) status.textContent = "Saved to Workflow Tasks.";
       dialog?.close();
       renderTasks(data);
