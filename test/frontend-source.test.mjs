@@ -354,7 +354,11 @@ test("task dialogs use selectable categories and clean escaped text while editin
   assert.match(source, /function normalizeEscapedText\(text\)/);
   assert.match(source, /form\.elements\.taskName\.value = normalizeEscapedText\(task\.taskName \|\| ""\)/);
   assert.match(source, /form\.elements\.nextAction\.value = normalizeEscapedText\(task\.nextAction \|\| ""\)/);
+  assert.match(source, /form\.elements\.workLog\.value = normalizeEscapedText\(task\.workLog \|\| ""\)/);
   assert.match(source, /taskName: normalizeEscapedText\(formData\.get\("taskName"\)\)/);
+  assert.match(source, /workLog: normalizeEscapedText\(formData\.get\("workLog"\)\)/);
+  assert.match(source, /<span>Work Log<\/span>/);
+  assert.match(source, /<textarea name="workLog"/);
   assert.match(source, /<select name="category">/);
   assert.match(source, /taskCategoryOptions\(data\)/);
   assert.match(source, /form\.elements\.category\.value = normalizeEscapedText\(task\.category \|\| "Other"\)/);

@@ -199,6 +199,7 @@ function taskFromForm(form) {
   return {
     taskName: normalizeEscapedText(formData.get("taskName")),
     nextAction: normalizeEscapedText(formData.get("nextAction")),
+    workLog: normalizeEscapedText(formData.get("workLog")),
     category: String(formData.get("category") || "").trim() || "Other",
     priority: String(formData.get("priority") || "P2"),
     status: String(formData.get("status") || "Not Started"),
@@ -215,6 +216,7 @@ function taskFromEditForm(form, original = {}) {
     ...original,
     taskName: normalizeEscapedText(formData.get("taskName")),
     nextAction: normalizeEscapedText(formData.get("nextAction")),
+    workLog: normalizeEscapedText(formData.get("workLog")),
     category: String(formData.get("category") || "").trim() || "Other",
     priority: String(formData.get("priority") || "P2"),
     status: String(formData.get("status") || "Not Started"),
@@ -1238,6 +1240,10 @@ function taskForm(data) {
           <span>Next Action</span>
           <textarea name="nextAction" rows="3" placeholder="Add the concrete next step"></textarea>
         </label>
+        <label>
+          <span>Work Log</span>
+          <textarea name="workLog" rows="3" placeholder="What has already happened?"></textarea>
+        </label>
         <div class="task-form-grid">
           <label>
             <span>Category</span>
@@ -1298,6 +1304,10 @@ function taskEditForm(data) {
         <label>
           <span>Next Action</span>
           <textarea name="nextAction" rows="3"></textarea>
+        </label>
+        <label>
+          <span>Work Log</span>
+          <textarea name="workLog" rows="3"></textarea>
         </label>
         <div class="task-form-grid">
           <label>
@@ -1419,6 +1429,7 @@ function fillTaskEditForm(form, task) {
   form.elements.sourceType.value = task.sourceType || "";
   form.elements.taskName.value = normalizeEscapedText(task.taskName || "");
   form.elements.nextAction.value = normalizeEscapedText(task.nextAction || "");
+  form.elements.workLog.value = normalizeEscapedText(task.workLog || "");
   form.elements.category.value = normalizeEscapedText(task.category || "Other");
   form.elements.dueDate.value = cleanInputDate(task.dueDate);
   form.elements.priority.value = task.priority || "P2";
