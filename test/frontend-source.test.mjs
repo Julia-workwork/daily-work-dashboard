@@ -490,6 +490,17 @@ test("daily routine saves one Notion record per day for reporting", async () => 
   assert.match(source, /published \$\{postCount\} posts/);
 });
 
+test("daily routine creates a new record when the existing Notion row is archived", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /function isArchivedNotionRecordError\(error\)/);
+  assert.match(source, /block that is archived/i);
+  assert.match(source, /catch \(error\) \{/);
+  assert.match(source, /if \(!task\.sourceId \|\| !isArchivedNotionRecordError\(error\)\) throw error;/);
+  assert.match(source, /sourceId:\s*""/);
+  assert.match(source, /result = await saveTaskToNotion\(taskToSave\)/);
+});
+
 test("task board supports synced this week ongoing work", async () => {
   const source = await read("../static/app.js");
   const styles = await read("../static/styles.css");

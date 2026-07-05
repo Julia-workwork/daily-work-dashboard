@@ -366,6 +366,10 @@ function upsertTaskInData(data, task) {
   }
 }
 
+function isArchivedNotionRecordError(error) {
+  return /block that is archived|must unarchive the block before editing/i.test(String(error?.message || error || ""));
+}
+
 async function saveDailyRoutineToNotion(data, routine) {
   const existingTask = findDailyRoutineTask(data);
   const task = {
@@ -375,13 +379,21 @@ async function saveDailyRoutineToNotion(data, routine) {
     notionUrl: existingTask?.notionUrl || routine.notionUrl || "",
   };
 
-  const result = task.sourceId ? await saveTaskEdit(task) : await saveTaskToNotion(task);
+  let taskToSave = task;
+  let result;
+  try {
+    result = task.sourceId ? await saveTaskEdit(task) : await saveTaskToNotion(task);
+  } catch (error) {
+    if (!task.sourceId || !isArchivedNotionRecordError(error)) throw error;
+    taskToSave = { ...task, sourceId: "", sourceType: "workflow-task", notionUrl: "" };
+    result = await saveTaskToNotion(taskToSave);
+  }
   const savedTask = {
-    ...task,
+    ...taskToSave,
     ...(result.task || {}),
-    sourceId: result.sourceId || result.task?.sourceId || task.sourceId,
+    sourceId: result.sourceId || result.task?.sourceId || taskToSave.sourceId,
     sourceType: result.sourceType || result.task?.sourceType || "workflow-task",
-    notionUrl: result.notionUrl || result.task?.notionUrl || task.notionUrl,
+    notionUrl: result.notionUrl || result.task?.notionUrl || taskToSave.notionUrl,
   };
   upsertTaskInData(data, savedTask);
   saveDailyRoutineState({
