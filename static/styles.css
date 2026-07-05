@@ -810,6 +810,12 @@ select {
   padding: 16px;
 }
 
+.task-monthly-ongoing-panel {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(245, 247, 255, 0.7)),
+    rgba(255, 255, 255, 0.74);
+}
+
 .task-ongoing-body {
   display: grid;
   gap: 12px;

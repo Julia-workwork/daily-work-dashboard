@@ -30,6 +30,7 @@ const elements = {
 const DEFAULT_TASK_CATEGORIES = ["Product", "Content", "User Feedback", "Data", "IMC", "Brand", "Julia", "Other"];
 const HIDDEN_SOURCE_TASK_KEYS = "daily-work-hidden-source-task-keys";
 const DAILY_ROUTINE_STORAGE_KEY = "daily-work-daily-routine";
+const WORKFLOW_SNAPSHOT_STORAGE_KEY = "daily-work-dashboard-snapshot";
 const DEFAULT_DAILY_ROUTINE = {
   emailsDone: false,
   emailsCount: "",
@@ -124,9 +125,18 @@ function isDone(task) {
   return task.status === "Done";
 }
 
-function isWorkflowOngoingTask(task) {
+function isWorkflowMonthlyOngoingTask(task) {
   const text = normalizeEscapedText([task.taskName, task.nextAction].filter(Boolean).join(" "));
-  return /\[JL\]\s*Ongoing|Ongoing\s*-/i.test(text);
+  return /\[JL\]\s*Monthly Ongoing|Monthly Ongoing\s*-/i.test(text);
+}
+
+function isWorkflowWeeklyOngoingTask(task) {
+  const text = normalizeEscapedText([task.taskName, task.nextAction].filter(Boolean).join(" "));
+  return !isWorkflowMonthlyOngoingTask(task) && /\[JL\]\s*Ongoing|Ongoing\s*-/i.test(text);
+}
+
+function isWorkflowOngoingTask(task) {
+  return isWorkflowWeeklyOngoingTask(task) || isWorkflowMonthlyOngoingTask(task);
 }
 
 function workflowOngoingReportText(task) {
@@ -906,7 +916,7 @@ function weeklyOngoingItems(data, weekRange) {
   const taskOngoing = data.tasks
     .filter((task) => {
       const date = task.sourceDate || task.completedDate || task.dueDate;
-      return isWorkflowOngoingTask(task) && reportWeekLabel(data, date) === weekRange;
+      return isWorkflowWeeklyOngoingTask(task) && reportWeekLabel(data, date) === weekRange;
     })
     .map((task) => {
       const date = task.sourceDate || task.completedDate || task.dueDate;
@@ -920,6 +930,26 @@ function weeklyOngoingItems(data, weekRange) {
       };
     });
   return [...dailyOngoing, ...taskOngoing].filter((item) => item.text);
+}
+
+function monthlyOngoingItems(data, monthKey) {
+  return data.tasks
+    .filter((task) => {
+      const date = task.sourceDate || task.completedDate || task.dueDate;
+      return isWorkflowMonthlyOngoingTask(task) && dateMonth(date) === monthKey;
+    })
+    .map((task) => {
+      const date = task.sourceDate || task.completedDate || task.dueDate;
+      return {
+        date,
+        week: reportWeekLabel(data, date),
+        text: workflowOngoingReportText(task),
+        type: "ongoing",
+        done: isDone(task),
+        task,
+      };
+    })
+    .filter((item) => item.text);
 }
 
 function dailyRecordGroups(data, weekRange) {
@@ -1654,6 +1684,12 @@ function weekRangeEndDate(weekRange) {
   return parseWeekRangeLabel(weekRange)?.end || todayIso();
 }
 
+function monthEndDate(monthKey) {
+  const [year, month] = String(monthKey || todayIso().slice(0, 7)).split("-").map(Number);
+  if (!year || !month) return todayIso();
+  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+}
+
 function ongoingTaskPayload(text, weekRange) {
   const cleaned = normalizeEscapedText(text);
   return {
@@ -1669,9 +1705,24 @@ function ongoingTaskPayload(text, weekRange) {
   };
 }
 
+function monthlyOngoingTaskPayload(text, monthKey) {
+  const cleaned = normalizeEscapedText(text);
+  return {
+    taskName: `[JL] Monthly Ongoing - ${cleaned}`,
+    nextAction: cleaned,
+    category: "Julia",
+    priority: "P2",
+    status: "In Progress",
+    dueDate: monthEndDate(monthKey),
+    sourceDate: todayIso(),
+    completedDate: "",
+    needsReview: false,
+  };
+}
+
 function ongoingDisplayTitle(task, fallbackText = "") {
   const text = normalizeEscapedText(task?.taskName || fallbackText);
-  return cleanTaskText(text.replace(/^\[JL\]\s*Ongoing\s*-\s*/i, "")) || "Ongoing work";
+  return cleanTaskText(text.replace(/^\[JL\]\s*(Monthly\s+)?Ongoing\s*-\s*/i, "")) || "Ongoing work";
 }
 
 function taskBoardOngoingPanel(data, taskPool) {
@@ -1694,6 +1745,26 @@ function taskBoardOngoingPanel(data, taskPool) {
   `;
 }
 
+function taskBoardMonthlyOngoingPanel(data) {
+  const monthKey = todayIso().slice(0, 7);
+  const ongoingItems = monthlyOngoingItems(data, monthKey).slice(0, 6);
+  return `
+    <section class="task-ongoing-panel task-monthly-ongoing-panel" aria-label="This Month Ongoing">
+      <div class="routine-heading">
+        <p>This Month Ongoing</p>
+        <h2>${escapeHtml(monthTitle(monthKey))}</h2>
+        <button class="text-action primary-action" type="button" data-open-monthly-ongoing>Add Monthly Ongoing</button>
+      </div>
+      <div class="task-ongoing-body">
+        <div class="ongoing-list">
+          ${ongoingItems.length ? ongoingItems.map(ongoingCard).join("") : '<p class="empty">No monthly ongoing items captured yet.</p>'}
+        </div>
+        <p class="routine-save-status" data-monthly-ongoing-save-status></p>
+      </div>
+    </section>
+  `;
+}
+
 function prefillOngoingTaskForm(form, weekRange) {
   form.reset();
   form.elements.taskName.value = "[JL] Ongoing - ";
@@ -1702,6 +1773,18 @@ function prefillOngoingTaskForm(form, weekRange) {
   form.elements.dueDate.value = cleanInputDate(weekRangeEndDate(weekRange));
   form.elements.priority.value = "P2";
   form.elements.status.value = "In Progress";
+  form.elements.needsReview.checked = false;
+}
+
+function prefillMonthlyOngoingTaskForm(form, monthKey) {
+  form.reset();
+  const payload = monthlyOngoingTaskPayload("", monthKey);
+  form.elements.taskName.value = payload.taskName;
+  form.elements.nextAction.value = "";
+  form.elements.category.value = payload.category;
+  form.elements.dueDate.value = cleanInputDate(payload.dueDate);
+  form.elements.priority.value = payload.priority;
+  form.elements.status.value = payload.status;
   form.elements.needsReview.checked = false;
 }
 
@@ -1716,6 +1799,21 @@ function bindOngoingCreator(data) {
     if (!dialog || !form) return;
     prefillOngoingTaskForm(form, weekRange);
     if (status) status.textContent = "Fill the ongoing details, then save to Notion.";
+    dialog.showModal();
+    form.elements.taskName.focus();
+  });
+}
+
+function bindMonthlyOngoingCreator(data) {
+  const button = elements.tasks.querySelector("[data-open-monthly-ongoing]");
+  const dialog = elements.tasks.querySelector("#task-dialog");
+  const form = elements.tasks.querySelector("#task-form");
+  const status = elements.tasks.querySelector("[data-monthly-ongoing-save-status]");
+  const monthKey = todayIso().slice(0, 7);
+  button?.addEventListener("click", () => {
+    if (!dialog || !form) return;
+    prefillMonthlyOngoingTaskForm(form, monthKey);
+    if (status) status.textContent = "Fill the monthly ongoing details, then save to Notion.";
     dialog.showModal();
     form.elements.taskName.focus();
   });
@@ -1741,6 +1839,7 @@ function renderTasks(data) {
     </section>
     ${dailyRoutinePanel(data)}
     ${taskBoardOngoingPanel(data, taskPool)}
+    ${taskBoardMonthlyOngoingPanel(data)}
     <article class="zine-panel">${taskTable(tasks, taskPool)}</article>
     ${taskForm(data)}
     ${taskEditForm(data)}
@@ -1755,6 +1854,7 @@ function renderTasks(data) {
   });
   bindDailyRoutine(data);
   bindOngoingCreator(data);
+  bindMonthlyOngoingCreator(data);
   bindTaskCreator(data);
   bindTaskEditor(data, elements.tasks);
   bindEditTaskButtons(data, elements.tasks);
@@ -2082,6 +2182,36 @@ function setSyncLine(message, type = "") {
   elements.sourceLine.className = `sync-pill ${type}`;
 }
 
+function loadWorkflowSnapshot() {
+  try {
+    const snapshot = JSON.parse(localStorage.getItem(WORKFLOW_SNAPSHOT_STORAGE_KEY) || "null");
+    if (snapshot?.payload?.updatedAt) return snapshot.payload;
+  } catch {
+    // Local snapshots are a convenience only; live Notion sync remains the source of truth.
+  }
+  return null;
+}
+
+function saveWorkflowSnapshot(payload) {
+  try {
+    localStorage.setItem(WORKFLOW_SNAPSHOT_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), payload }));
+  } catch {
+    // If storage is full or blocked, the dashboard still works from the live response.
+  }
+}
+
+function showWorkflowSnapshotWhileSyncing() {
+  if (state.data) return false;
+  const snapshot = loadWorkflowSnapshot();
+  if (!snapshot) return false;
+
+  state.data = snapshot;
+  render();
+  showState("Showing saved dashboard while syncing Notion...", "warning");
+  setSyncLine("Saved view · syncing", "warning");
+  return true;
+}
+
 function setDashboardLocked(locked) {
   elements.authPanel.hidden = !locked;
   document.body.classList.toggle("is-locked", locked);
@@ -2110,8 +2240,11 @@ async function login(password) {
 }
 
 async function loadWorkflow(options = {}) {
-  showState("Syncing work records...");
-  setSyncLine("Syncing");
+  const showingSnapshot = !options.forceRefresh && showWorkflowSnapshotWhileSyncing();
+  if (!showingSnapshot) {
+    showState("Syncing work records...");
+    setSyncLine("Syncing");
+  }
   elements.refresh.classList.add("is-loading");
 
   try {
@@ -2126,6 +2259,7 @@ async function loadWorkflow(options = {}) {
       throw new Error(payload.error || "Unable to sync work records.");
     }
     state.data = payload;
+    saveWorkflowSnapshot(payload);
     const time = new Date(payload.updatedAt).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" });
     const syncLabel =
       payload.cache?.status === "cached"
@@ -2138,8 +2272,13 @@ async function loadWorkflow(options = {}) {
     render();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to sync work records.";
-    showState(`${message} Check the Notion connection, page sharing, or local network availability.`, "error");
-    setSyncLine("Sync failed", "error");
+    if (showingSnapshot) {
+      showState(`Showing saved dashboard. Latest Notion sync failed: ${message}`, "warning");
+      setSyncLine("Saved view", "warning");
+    } else {
+      showState(`${message} Check the Notion connection, page sharing, or local network availability.`, "error");
+      setSyncLine("Sync failed", "error");
+    }
   } finally {
     elements.refresh.classList.remove("is-loading");
   }

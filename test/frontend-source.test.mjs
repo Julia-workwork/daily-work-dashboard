@@ -536,9 +536,38 @@ test("workflow ongoing tasks are included in weekly and monthly ongoing reports"
 
   assert.match(reportItemsBlock, /type:\s*isWorkflowOngoingTask\(task\) \? "ongoing" : "task"/);
   assert.match(weeklyOngoingBlock, /data\.tasks/);
-  assert.match(weeklyOngoingBlock, /isWorkflowOngoingTask\(task\)/);
+  assert.match(weeklyOngoingBlock, /isWorkflowWeeklyOngoingTask\(task\)/);
   assert.match(weeklyOngoingBlock, /reportWeekLabel\(data,\s*date\) === weekRange/);
   assert.match(weeklyOngoingBlock, /task:\s*task/);
+});
+
+test("task board supports synced this month ongoing work separately from weekly ongoing work", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+  const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /function isWorkflowMonthlyOngoingTask\(task\)/);
+  assert.match(source, /function monthlyOngoingItems\(data,\s*monthKey\)/);
+  assert.match(source, /function taskBoardMonthlyOngoingPanel\(data\)/);
+  assert.match(source, /function bindMonthlyOngoingCreator\(data\)/);
+  assert.match(source, /data-open-monthly-ongoing/);
+  assert.match(source, /\[JL\] Monthly Ongoing - /);
+  assert.match(source, /This Month Ongoing/);
+  assert.match(source, /Current Progress/);
+  assert.match(renderTasksBlock, /taskBoardMonthlyOngoingPanel\(data\)/);
+  assert.match(renderTasksBlock, /bindMonthlyOngoingCreator\(data\)/);
+  assert.match(styles, /\.task-monthly-ongoing-panel/);
+});
+
+test("frontend shows a saved dashboard snapshot while Notion syncs", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /WORKFLOW_SNAPSHOT_STORAGE_KEY/);
+  assert.match(source, /function loadWorkflowSnapshot\(\)/);
+  assert.match(source, /function saveWorkflowSnapshot\(payload\)/);
+  assert.match(source, /function showWorkflowSnapshotWhileSyncing\(\)/);
+  assert.match(source, /Showing saved dashboard while syncing Notion/);
+  assert.match(source, /saveWorkflowSnapshot\(payload\)/);
 });
 
 test("overview focus items keep edit and colored status chips in one action area", async () => {
