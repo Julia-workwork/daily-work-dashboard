@@ -35,6 +35,10 @@ const DEFAULT_DAILY_ROUTINE = {
   emailsDone: false,
   emailsCount: "",
   groupsDone: false,
+  userIssuesDone: false,
+  userIssuesCount: "",
+  userRequestsDone: false,
+  userRequestsCount: "",
   postsDone: false,
   postsCount: "",
 };
@@ -313,12 +317,18 @@ function findDailyRoutineTask(data) {
 function parseDailyRoutineTask(task) {
   const text = normalizeEscapedText(task?.workLog || task?.nextAction || "");
   const emails = text.match(/Handled\s+(\d+)\s+emails/i);
+  const userIssues = text.match(/handled\s+(\d+)\s+user issues/i);
+  const userRequests = text.match(/handled\s+(\d+)\s+user requests/i);
   const posts = text.match(/published\s+(\d+)\s+posts/i);
   return {
     date: todayIso(),
     emailsDone: Boolean(emails),
     emailsCount: emails?.[1] || "",
     groupsDone: /checked\s+3\s+groups/i.test(text),
+    userIssuesDone: Boolean(userIssues),
+    userIssuesCount: userIssues?.[1] || "",
+    userRequestsDone: Boolean(userRequests),
+    userRequestsCount: userRequests?.[1] || "",
     postsDone: Boolean(posts),
     postsCount: posts?.[1] || "",
     sourceId: task?.sourceId || "",
@@ -328,7 +338,18 @@ function parseDailyRoutineTask(task) {
 }
 
 function hasRoutineInput(routine) {
-  return Boolean(routine.emailsDone || routine.groupsDone || routine.postsDone || routine.emailsCount || routine.postsCount || routine.sourceId);
+  return Boolean(
+    routine.emailsDone ||
+      routine.groupsDone ||
+      routine.userIssuesDone ||
+      routine.userRequestsDone ||
+      routine.postsDone ||
+      routine.emailsCount ||
+      routine.userIssuesCount ||
+      routine.userRequestsCount ||
+      routine.postsCount ||
+      routine.sourceId,
+  );
 }
 
 function dailyRoutineStateForData(data) {
@@ -342,11 +363,17 @@ function dailyRoutineStateForData(data) {
 
 function dailyRoutineTaskPayload(routine) {
   const emailCount = Number(routine.emailsCount || 0);
+  const userIssueCount = Number(routine.userIssuesCount || 0);
+  const userRequestCount = Number(routine.userRequestsCount || 0);
   const postCount = Number(routine.postsCount || 0);
-  const isComplete = Boolean(routine.emailsDone && routine.groupsDone && routine.postsDone);
+  const isComplete = Boolean(
+    routine.emailsDone && routine.groupsDone && routine.userIssuesDone && routine.userRequestsDone && routine.postsDone,
+  );
   const parts = [
     routine.emailsDone ? `Handled ${emailCount} emails` : "Email handling pending",
     routine.groupsDone ? "checked 3 groups" : "group check pending",
+    routine.userIssuesDone ? `handled ${userIssueCount} user issues` : "user issue handling pending",
+    routine.userRequestsDone ? `handled ${userRequestCount} user requests` : "user request handling pending",
     routine.postsDone ? `published ${postCount} posts` : "post publishing pending",
   ];
   return {
@@ -1613,6 +1640,20 @@ function dailyRoutinePanel(data) {
             <input type="checkbox" data-routine-field="groupsDone" ${checked(routine.groupsDone)} />
             <span>Check 3 groups</span>
           </label>
+        </article>
+        <article class="routine-item ${routine.userIssuesDone ? "is-done" : ""}">
+          <label class="routine-check">
+            <input type="checkbox" data-routine-field="userIssuesDone" ${checked(routine.userIssuesDone)} />
+            <span>Handle user issues</span>
+          </label>
+          <input class="routine-number" type="number" min="0" inputmode="numeric" aria-label="User issue count" data-routine-field="userIssuesCount" value="${escapeHtml(routine.userIssuesCount)}" placeholder="0" />
+        </article>
+        <article class="routine-item ${routine.userRequestsDone ? "is-done" : ""}">
+          <label class="routine-check">
+            <input type="checkbox" data-routine-field="userRequestsDone" ${checked(routine.userRequestsDone)} />
+            <span>Handle user requests</span>
+          </label>
+          <input class="routine-number" type="number" min="0" inputmode="numeric" aria-label="User request count" data-routine-field="userRequestsCount" value="${escapeHtml(routine.userRequestsCount)}" placeholder="0" />
         </article>
         <article class="routine-item ${routine.postsDone ? "is-done" : ""}">
           <label class="routine-check">

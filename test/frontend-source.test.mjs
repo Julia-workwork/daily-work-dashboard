@@ -457,7 +457,9 @@ test("tasks page includes a daily routine checklist with numeric counts", async 
   assert.match(source, /data-routine-status-wrap/);
   assert.match(source, /data-routine-field="emailsCount"/);
   assert.match(source, /data-routine-field="postsCount"/);
-  for (const label of ["Daily Routine", "Handle emails", "Check 3 groups", "Publish post"]) {
+  assert.match(source, /data-routine-field="userIssuesCount"/);
+  assert.match(source, /data-routine-field="userRequestsCount"/);
+  for (const label of ["Daily Routine", "Handle emails", "Check 3 groups", "Publish post", "Handle user issues", "Handle user requests"]) {
     assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(renderTasksBlock, /dailyRoutinePanel\(data\)/);
@@ -487,6 +489,8 @@ test("daily routine saves one Notion record per day for reporting", async () => 
   assert.match(source, /task\?\.workLog \|\| task\?\.nextAction/);
   assert.match(source, /data-routine-save-status/);
   assert.match(source, /Handled \$\{emailCount\} emails/);
+  assert.match(source, /handled \$\{userIssueCount\} user issues/);
+  assert.match(source, /handled \$\{userRequestCount\} user requests/);
   assert.match(source, /published \$\{postCount\} posts/);
 });
 
