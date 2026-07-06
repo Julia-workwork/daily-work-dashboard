@@ -217,9 +217,11 @@ function taskCategoryOptions(data, current = "") {
 }
 
 function taskWorkstream(task) {
+  const explicit = normalizeWorkstream(task?.workstream);
+  if (explicit) return explicit;
   const text = normalizeEscapedText([task?.taskName, task?.nextAction, task?.workLog].filter(Boolean).join(" "));
-  const match = text.match(/\[(PL|BR|IMC|JL)\]/i);
-  return match ? match[1].toUpperCase() : "";
+  const match = text.match(/\[(PL|BD|BR|IMC|JL)\]/i);
+  return normalizeWorkstream(match?.[1]);
 }
 
 function workstreamOptions(current = "") {
@@ -229,12 +231,17 @@ function workstreamOptions(current = "") {
 }
 
 function stripWorkstreamPrefix(text) {
-  return normalizeEscapedText(text).replace(/^\[(PL|BR|IMC|JL)\]\s*/i, "").trim();
+  return normalizeEscapedText(text).replace(/^\[(PL|BD|BR|IMC|JL)\]\s*/i, "").trim();
+}
+
+function normalizeWorkstream(value) {
+  value = String(value || "").trim().toUpperCase();
+  return value === "BD" ? "BR" : value;
 }
 
 function applyWorkstreamPrefix(taskName, workstream) {
   const cleanName = stripWorkstreamPrefix(taskName);
-  const tag = String(workstream || "").trim().toUpperCase();
+  const tag = normalizeWorkstream(workstream);
   if (!tag) return cleanName;
   return `[${tag}] ${cleanName}`;
 }
@@ -252,6 +259,7 @@ function taskFromForm(form) {
     taskName: applyWorkstreamPrefix(normalizeEscapedText(formData.get("taskName")), formData.get("workstream")),
     nextAction: normalizeEscapedText(formData.get("nextAction")),
     workLog: normalizeEscapedText(formData.get("workLog")),
+    workstream: normalizeWorkstream(formData.get("workstream")),
     category: String(formData.get("category") || "").trim() || "Other",
     priority: String(formData.get("priority") || "P2"),
     status: String(formData.get("status") || "Not Started"),
@@ -269,6 +277,7 @@ function taskFromEditForm(form, original = {}) {
     taskName: applyWorkstreamPrefix(normalizeEscapedText(formData.get("taskName")), formData.get("workstream")),
     nextAction: normalizeEscapedText(formData.get("nextAction")),
     workLog: normalizeEscapedText(formData.get("workLog")),
+    workstream: normalizeWorkstream(formData.get("workstream")),
     category: String(formData.get("category") || "").trim() || "Other",
     priority: String(formData.get("priority") || "P2"),
     status: String(formData.get("status") || "Not Started"),

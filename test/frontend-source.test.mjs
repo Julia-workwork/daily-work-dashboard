@@ -338,6 +338,8 @@ test("tasks page supports week filtering and cleaned tag display", async () => {
   assert.match(source, /workstream:\s*"All"/);
   assert.match(source, /const TASK_WORKSTREAMS = \[/);
   assert.match(source, /function taskWorkstream\(task\)/);
+  assert.match(source, /BD\|BR/);
+  assert.match(source, /return value === "BD" \? "BR" : value/);
   assert.match(source, /filterSelect\("Workstream",\s*"workstream"/);
   assert.match(source, /filterWeekSelect/);
   assert.match(source, /canonicalWeekLabel/);

@@ -98,6 +98,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
                   Status: { status: { name: "In progress" } },
                   Priority: { select: { name: "P1" } },
                   Category: { select: { name: "User Feedback" } },
+                  Workstream: { select: { name: "PL" } },
                   "Due Date": { date: { start: "2026-06-22" } },
                   "Created Time": { created_time: "2026-07-04T06:35:00.000Z" },
                   "Next Action": { rich_text: [{ plain_text: "Ask for test video" }] },
@@ -119,6 +120,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
   assert.equal(tasks[0].sourceId, "task-page-id");
   assert.equal(tasks[0].sourceType, "workflow-task");
   assert.equal(tasks[0].status, "In Progress");
+  assert.equal(tasks[0].workstream, "PL");
   assert.equal(tasks[0].workLog, "Handled 5 emails");
   assert.equal(tasks[0].needsReview, true);
   assert.equal(tasks[0].notionLink, "https://notion.so/task");
