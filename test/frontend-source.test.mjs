@@ -335,15 +335,21 @@ test("tasks page supports week filtering and cleaned tag display", async () => {
   const source = await read("../static/app.js");
 
   assert.match(source, /week:\s*"All"/);
+  assert.match(source, /workstream:\s*"All"/);
+  assert.match(source, /const TASK_WORKSTREAMS = \[/);
+  assert.match(source, /function taskWorkstream\(task\)/);
+  assert.match(source, /filterSelect\("Workstream",\s*"workstream"/);
   assert.match(source, /filterWeekSelect/);
   assert.match(source, /canonicalWeekLabel/);
   assert.match(source, /reportWeekLabel/);
   assert.match(source, /state\.filters\.week/);
+  assert.match(source, /state\.filters\.workstream/);
   assert.match(source, /cleanTaskText/);
   assert.match(source, /displayReportText\(text\)/);
   assert.match(source, /cleanInputDate/);
   assert.match(source, /taskTitle = cleanTaskText/);
   assert.match(source, /taskDetail = cleanTaskText/);
+  assert.match(source, /preserveWorkstreamTag/);
 });
 
 test("task dialogs use selectable categories and clean escaped text while editing", async () => {
@@ -353,10 +359,12 @@ test("task dialogs use selectable categories and clean escaped text while editin
   assert.match(source, /function taskCategoryOptions\(data, current = ""\)/);
   assert.match(source, /function normalizeEscapedText\(text\)/);
   assert.match(source, /form\.elements\.taskName\.value = normalizeEscapedText\(task\.taskName \|\| ""\)/);
+  assert.match(source, /form\.elements\.workstream\.value = taskWorkstream\(task\)/);
   assert.match(source, /form\.elements\.nextAction\.value = normalizeEscapedText\(task\.nextAction \|\| ""\)/);
   assert.match(source, /form\.elements\.workLog\.value = normalizeEscapedText\(task\.workLog \|\| ""\)/);
-  assert.match(source, /taskName: normalizeEscapedText\(formData\.get\("taskName"\)\)/);
+  assert.match(source, /taskName: applyWorkstreamPrefix\(normalizeEscapedText\(formData\.get\("taskName"\)\),\s*formData\.get\("workstream"\)\)/);
   assert.match(source, /workLog: normalizeEscapedText\(formData\.get\("workLog"\)\)/);
+  assert.match(source, /name="workstream"/);
   assert.match(source, /<span>Work Log<\/span>/);
   assert.match(source, /<textarea name="workLog"/);
   assert.match(source, /<select name="category">/);

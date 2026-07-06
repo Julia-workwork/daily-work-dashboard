@@ -9,6 +9,7 @@ const state = {
     priority: "All",
     status: "All",
     category: "All",
+    workstream: "All",
   },
 };
 
@@ -28,6 +29,13 @@ const elements = {
 };
 
 const DEFAULT_TASK_CATEGORIES = ["Product", "Content", "User Feedback", "Data", "IMC", "Brand", "Julia", "Other"];
+const TASK_WORKSTREAMS = [
+  { value: "", label: "No workstream" },
+  { value: "PL", label: "PL · Product Line" },
+  { value: "BR", label: "BR · Brand" },
+  { value: "IMC", label: "IMC" },
+  { value: "JL", label: "JL · Julia" },
+];
 const HIDDEN_SOURCE_TASK_KEYS = "daily-work-hidden-source-task-keys";
 const DAILY_ROUTINE_STORAGE_KEY = "daily-work-daily-routine";
 const WORKFLOW_SNAPSHOT_STORAGE_KEY = "daily-work-dashboard-snapshot";
@@ -208,10 +216,40 @@ function taskCategoryOptions(data, current = "") {
     .join("");
 }
 
+function taskWorkstream(task) {
+  const text = normalizeEscapedText([task?.taskName, task?.nextAction, task?.workLog].filter(Boolean).join(" "));
+  const match = text.match(/\[(PL|BR|IMC|JL)\]/i);
+  return match ? match[1].toUpperCase() : "";
+}
+
+function workstreamOptions(current = "") {
+  return TASK_WORKSTREAMS.map(
+    (option) => `<option value="${escapeHtml(option.value)}" ${current === option.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`,
+  ).join("");
+}
+
+function stripWorkstreamPrefix(text) {
+  return normalizeEscapedText(text).replace(/^\[(PL|BR|IMC|JL)\]\s*/i, "").trim();
+}
+
+function applyWorkstreamPrefix(taskName, workstream) {
+  const cleanName = stripWorkstreamPrefix(taskName);
+  const tag = String(workstream || "").trim().toUpperCase();
+  if (!tag) return cleanName;
+  return `[${tag}] ${cleanName}`;
+}
+
+function preserveWorkstreamTag(text) {
+  const normalized = normalizeEscapedText(text);
+  const workstream = taskWorkstream({ taskName: normalized });
+  const cleaned = displayReportText(normalized);
+  return workstream ? `[${workstream}] ${cleaned}`.trim() : cleaned;
+}
+
 function taskFromForm(form) {
   const formData = new FormData(form);
   return {
-    taskName: normalizeEscapedText(formData.get("taskName")),
+    taskName: applyWorkstreamPrefix(normalizeEscapedText(formData.get("taskName")), formData.get("workstream")),
     nextAction: normalizeEscapedText(formData.get("nextAction")),
     workLog: normalizeEscapedText(formData.get("workLog")),
     category: String(formData.get("category") || "").trim() || "Other",
@@ -228,7 +266,7 @@ function taskFromEditForm(form, original = {}) {
   const formData = new FormData(form);
   return {
     ...original,
-    taskName: normalizeEscapedText(formData.get("taskName")),
+    taskName: applyWorkstreamPrefix(normalizeEscapedText(formData.get("taskName")), formData.get("workstream")),
     nextAction: normalizeEscapedText(formData.get("nextAction")),
     workLog: normalizeEscapedText(formData.get("workLog")),
     category: String(formData.get("category") || "").trim() || "Other",
@@ -466,7 +504,7 @@ function editTaskButton(task, className = "row-edit-action") {
 }
 
 function cleanTaskText(text) {
-  return displayReportText(text);
+  return preserveWorkstreamTag(text);
 }
 
 function formatTaskRecordTime(value) {
@@ -1216,11 +1254,13 @@ function filterWeekSelect(tasks) {
 function filteredTasks(data) {
   return allTasks(data).filter((task) => {
     const taskWeek = canonicalWeekLabel(task.dueDate || task.sourceDate || task.completedDate);
+    const workstream = taskWorkstream(task) || "Unassigned";
     return (
       (state.filters.week === "All" || taskWeek === state.filters.week) &&
       (state.filters.priority === "All" || task.priority === state.filters.priority) &&
       (state.filters.status === "All" || task.status === state.filters.status) &&
-      (state.filters.category === "All" || task.category === state.filters.category)
+      (state.filters.category === "All" || task.category === state.filters.category) &&
+      (state.filters.workstream === "All" || workstream === state.filters.workstream)
     );
   });
 }
@@ -1306,6 +1346,12 @@ function taskForm(data) {
           <input name="taskName" required placeholder="What needs to be done?" />
         </label>
         <label>
+          <span>Workstream</span>
+          <select name="workstream">
+            ${workstreamOptions()}
+          </select>
+        </label>
+        <label>
           <span>Next Action</span>
           <textarea name="nextAction" rows="3" placeholder="Add the concrete next step"></textarea>
         </label>
@@ -1369,6 +1415,12 @@ function taskEditForm(data) {
         <label>
           <span>Task Name</span>
           <textarea name="taskName" rows="3" required></textarea>
+        </label>
+        <label>
+          <span>Workstream</span>
+          <select name="workstream">
+            ${workstreamOptions()}
+          </select>
         </label>
         <label>
           <span>Next Action</span>
@@ -1497,6 +1549,7 @@ function fillTaskEditForm(form, task) {
   form.elements.sourceId.value = task.sourceId || "";
   form.elements.sourceType.value = task.sourceType || "";
   form.elements.taskName.value = normalizeEscapedText(task.taskName || "");
+  form.elements.workstream.value = taskWorkstream(task);
   form.elements.nextAction.value = normalizeEscapedText(task.nextAction || "");
   form.elements.workLog.value = normalizeEscapedText(task.workLog || "");
   form.elements.category.value = normalizeEscapedText(task.category || "Other");
@@ -1884,6 +1937,7 @@ function renderTasks(data) {
         ${filterSelect("Priority", "priority", unique(taskPool.map((task) => task.priority)))}
         ${filterSelect("Status", "status", unique(taskPool.map((task) => task.status)))}
         ${filterSelect("Category", "category", unique(taskPool.map((task) => task.category)))}
+        ${filterSelect("Workstream", "workstream", unique([...taskPool.map((task) => taskWorkstream(task) || "Unassigned"), "PL", "BR", "IMC", "JL"]))}
       </div>
       <button class="text-action primary-action" type="button" data-open-task>New Task</button>
     </section>
