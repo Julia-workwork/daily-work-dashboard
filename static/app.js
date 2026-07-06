@@ -1626,6 +1626,7 @@ function dailyRoutinePanel(data) {
         <p>Daily Routine</p>
         <h2>Today’s fixed checks</h2>
         <p class="routine-save-status" data-routine-save-status data-routine-status-wrap>${routine.sourceId ? "Synced to Notion for today." : "Not saved to Notion yet."}</p>
+        <button class="text-action primary-action routine-save-button" type="button" data-save-routine>Save Daily Routine</button>
       </div>
       <div class="routine-list">
         <article class="routine-item ${routine.emailsDone ? "is-done" : ""}">
@@ -1671,14 +1672,19 @@ function bindDailyRoutine(data) {
   const panel = elements.tasks.querySelector(".daily-routine-panel");
   if (!panel) return;
   const status = panel.querySelector("[data-routine-save-status]");
+  const saveButton = panel.querySelector("[data-save-routine]");
   const updateItemState = (control) => {
     const item = control.closest(".routine-item");
     const checkbox = item?.querySelector('input[type="checkbox"]');
     item?.classList.toggle("is-done", Boolean(checkbox?.checked));
   };
+  const markUnsaved = () => {
+    if (status) status.textContent = "Unsaved changes. Click Save Daily Routine.";
+  };
   const persistRoutine = async () => {
     const routine = loadDailyRoutineState();
     if (status) status.textContent = "Saving routine to Notion...";
+    if (saveButton) saveButton.disabled = true;
     panel.querySelectorAll("[data-routine-field]").forEach((control) => {
       control.disabled = true;
     });
@@ -1691,6 +1697,7 @@ function bindDailyRoutine(data) {
       panel.querySelectorAll("[data-routine-field]").forEach((control) => {
         control.disabled = false;
       });
+      if (saveButton) saveButton.disabled = false;
     }
   };
   panel.querySelectorAll("[data-routine-field]").forEach((control) => {
@@ -1699,12 +1706,13 @@ function bindDailyRoutine(data) {
       const value = control.type === "checkbox" ? control.checked : control.value;
       saveDailyRoutineState({ ...current, [control.dataset.routineField]: value });
       updateItemState(control);
-      persistRoutine();
+      markUnsaved();
     });
     control.addEventListener("input", () => {
       if (control.type === "checkbox") return;
       const current = loadDailyRoutineState();
       saveDailyRoutineState({ ...current, [control.dataset.routineField]: control.value });
+      markUnsaved();
     });
     control.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
@@ -1713,6 +1721,7 @@ function bindDailyRoutine(data) {
       }
     });
   });
+  saveButton?.addEventListener("click", () => persistRoutine());
 }
 
 function taskBoardWeekRange(data, taskPool) {

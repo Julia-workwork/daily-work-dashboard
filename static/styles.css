@@ -865,6 +865,12 @@ select {
   letter-spacing: -0.02em;
 }
 
+.routine-save-button {
+  width: fit-content;
+  margin-top: 8px;
+  padding-inline: 16px;
+}
+
 .routine-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

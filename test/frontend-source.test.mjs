@@ -455,11 +455,12 @@ test("tasks page includes a daily routine checklist with numeric counts", async 
   assert.match(source, /function dailyRoutinePanel\(data\)/);
   assert.match(source, /function bindDailyRoutine\(data\)/);
   assert.match(source, /data-routine-status-wrap/);
+  assert.match(source, /data-save-routine/);
   assert.match(source, /data-routine-field="emailsCount"/);
   assert.match(source, /data-routine-field="postsCount"/);
   assert.match(source, /data-routine-field="userIssuesCount"/);
   assert.match(source, /data-routine-field="userRequestsCount"/);
-  for (const label of ["Daily Routine", "Handle emails", "Check 3 groups", "Publish post", "Handle user issues", "Handle user requests"]) {
+  for (const label of ["Daily Routine", "Handle emails", "Check 3 groups", "Publish post", "Handle user issues", "Handle user requests", "Save Daily Routine"]) {
     assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(renderTasksBlock, /dailyRoutinePanel\(data\)/);
@@ -467,6 +468,18 @@ test("tasks page includes a daily routine checklist with numeric counts", async 
   assert.match(styles, /\.daily-routine-panel/);
   assert.match(styles, /\.routine-number/);
   assert.match(styles, /\.routine-item\.is-done/);
+});
+
+test("daily routine changes wait for an explicit save button before writing to Notion", async () => {
+  const source = await read("../static/app.js");
+  const bindBlock = source.match(/function bindDailyRoutine\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const changeBlock = bindBlock.match(/control\.addEventListener\("change",\s*\(\)\s*=>\s*\{[\s\S]+?markUnsaved\(\);\n\s*\}\);/)?.[0] || "";
+
+  assert.match(bindBlock, /const saveButton = panel\.querySelector\("\[data-save-routine\]"\)/);
+  assert.match(bindBlock, /saveButton\?\.addEventListener\("click",\s*\(\)\s*=>\s*persistRoutine\(\)\)/);
+  assert.match(bindBlock, /Unsaved changes/);
+  assert.match(changeBlock, /markUnsaved\(\)/);
+  assert.doesNotMatch(changeBlock, /persistRoutine\(\)/);
 });
 
 test("daily routine saves one Notion record per day for reporting", async () => {
