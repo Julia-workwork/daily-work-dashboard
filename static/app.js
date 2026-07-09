@@ -621,7 +621,6 @@ function reportSourceText(item) {
     item.workLog,
     item.taskName,
     item.nextAction,
-    item.category,
   ]
     .filter(Boolean)
     .join("；");
@@ -688,6 +687,12 @@ function cleanSummaryText(text) {
 
 function isStandaloneSummaryNoise(text) {
   return /^(Meeting|Product|User Feedback|Content|Data|Other)$/i.test(cleanSummaryText(text));
+}
+
+function cleanLeadershipSummaryItem(text) {
+  const cleaned = cleanSummaryText(text);
+  if (!cleaned || isStandaloneSummaryNoise(cleaned)) return "";
+  return cleaned;
 }
 
 function summaryThemeLabel(text) {
@@ -771,6 +776,34 @@ function isQuantifiedOutputItem(item) {
   return item.done || hasAnyTag(item, ["Output", "Done"]) || explicitQuantity(item.text) > 0;
 }
 
+function reportLineKey(item) {
+  const explicit = normalizeWorkstream(item.workstream);
+  if (["PL", "BR", "IMC", "JL"].includes(explicit)) return explicit;
+
+  const text = normalizeEscapedText(item.text);
+  const tag = text.match(/\[(PL|BD|BR|IMC|JL|JULIA)\]/i)?.[1];
+  if (tag) return normalizeWorkstream(tag === "JULIA" ? "JL" : tag);
+
+  if (/\bIMC\b|用户标签|标签|汇报文件|传播/i.test(text)) return "IMC";
+  if (/\bBR\b|\bBrand\b|品牌|社媒|social media|post|blog|图片|pic|素材/i.test(text)) return "BR";
+  if (/\bPL\b|\bProduct Line\b|产品线|产品|功能|固件|firmware|beta|需求|研发|PM|用户问题/i.test(text)) return "PL";
+  if (/\bJL\b|\bJulia\b|JULIA/i.test(text)) return "JL";
+  return "";
+}
+
+function primaryWorkflowSectionName(item) {
+  const sectionByKey = {
+    PL: "Product Line",
+    BR: "Brand",
+    IMC: "IMC",
+    JL: "Julia’s Initiative",
+  };
+  const explicitSection = sectionByKey[reportLineKey(item)];
+  if (explicitSection) return explicitSection;
+  if (hasReportTag(item, ["Plan", "Idea", "TBD"]) || (!item.done && !hasReportTag(item, ["JULIA"]))) return "Next Moves";
+  return REPORT_LINES.find((line) => itemMatches(item, line.tags, line.keywords))?.title || "Next Moves";
+}
+
 function reportSection(title, items) {
   const uniqueItems = uniqueReportItems(items.map((item) => displayReportText(item.text))).slice(0, 6);
   const quantifiedItems = uniqueReportItems(
@@ -789,13 +822,11 @@ function reportSection(title, items) {
 }
 
 function workflowSections(items) {
-  const productLine = items.filter((item) => itemMatches(item, REPORT_LINES[0].tags, REPORT_LINES[0].keywords));
-  const brand = items.filter((item) => itemMatches(item, REPORT_LINES[1].tags, REPORT_LINES[1].keywords));
-  const imc = items.filter((item) => itemMatches(item, REPORT_LINES[2].tags, REPORT_LINES[2].keywords));
-  const julia = items.filter((item) => hasReportTag(item, ["JULIA"]));
-  const nextMoves = items.filter(
-    (item) => hasReportTag(item, ["Plan", "Idea", "TBD"]) || (!item.done && !hasReportTag(item, ["JULIA"])),
-  );
+  const productLine = items.filter((item) => primaryWorkflowSectionName(item) === "Product Line");
+  const brand = items.filter((item) => primaryWorkflowSectionName(item) === "Brand");
+  const imc = items.filter((item) => primaryWorkflowSectionName(item) === "IMC");
+  const julia = items.filter((item) => primaryWorkflowSectionName(item) === "Julia’s Initiative");
+  const nextMoves = items.filter((item) => primaryWorkflowSectionName(item) === "Next Moves");
 
   return [
     reportSection("Product Line", productLine),
@@ -807,7 +838,7 @@ function workflowSections(items) {
 }
 
 function lineReport(line, items) {
-  const lineItems = items.filter((item) => itemMatches(item, line.tags, line.keywords));
+  const lineItems = items.filter((item) => primaryWorkflowSectionName(item) === line.title);
   const quantifiedItems = uniqueReportItems(
     lineItems
       .filter((item) => isQuantifiedOutputItem(item) && !isWaitingOrTbdItem(item))
@@ -910,6 +941,7 @@ function reportItemsForMonth(data, monthKey) {
         week: reportWeekLabel(data, date),
         text: isWorkflowOngoingTask(task) ? workflowOngoingReportText(task) : reportSourceText(task),
         type: isWorkflowOngoingTask(task) ? "ongoing" : "task",
+        workstream: taskWorkstream(task),
         done: isDone(task),
       };
     })
@@ -991,9 +1023,6 @@ function monthlyRecap(weeks) {
       .filter((item) => item.type === "ongoing")
       .map((item) => displayReportText(item.text)),
   );
-  const leadershipSummary = sections
-    .filter((section) => section.items.length)
-    .map((section) => `${section.title}: ${section.items.slice(0, 4).join("；")}`);
   return {
     weekCount: weeks.length,
     total: weeks.reduce((sum, week) => sum + week.total, 0),
@@ -1001,9 +1030,20 @@ function monthlyRecap(weeks) {
     quantifiedOutput: weeks.reduce((sum, week) => sum + week.quantifiedOutput, 0),
     quantifiedItems,
     ongoingProjects,
-    leadershipSummary,
+    leadershipSummary: monthlyLeadershipSummary(sections),
     sections,
   };
+}
+
+function monthlyLeadershipSummary(sections) {
+  return sections
+    .map((section) => {
+      const items = uniqueReportItems(section.items.map(cleanLeadershipSummaryItem).filter(Boolean));
+      if (!items.length) return "";
+      const outputLabel = section.quantifiedOutput ? `${section.quantifiedOutput} quantified output` : `${section.records} records`;
+      return `${section.title}: ${outputLabel}. ${items.join("；")}`;
+    })
+    .filter(Boolean);
 }
 
 function selectedWeeklyReport(monthly) {

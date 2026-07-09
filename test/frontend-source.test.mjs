@@ -269,6 +269,22 @@ test("monthly quantified output details are grouped by business line", async () 
   assert.match(outputDetailsBlock, /monthly-output-line/);
 });
 
+test("monthly leadership summary uses one primary workstream per item and excludes category-only labels", async () => {
+  const source = await read("../static/app.js");
+  const reportSourceBlock = source.match(/function reportSourceText\(item\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const workflowSectionsBlock = source.match(/function workflowSections\(items\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const monthlyRecapBlock = source.match(/function monthlyRecap\(weeks\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /function reportLineKey\(item\)/);
+  assert.match(source, /function primaryWorkflowSectionName\(item\)/);
+  assert.match(source, /function cleanLeadershipSummaryItem\(text\)/);
+  assert.match(source, /function monthlyLeadershipSummary\(sections\)/);
+  assert.match(workflowSectionsBlock, /primaryWorkflowSectionName\(item\)/);
+  assert.match(monthlyRecapBlock, /leadershipSummary:\s*monthlyLeadershipSummary\(sections\)/);
+  assert.doesNotMatch(reportSourceBlock, /item\.category/);
+  assert.match(source, /isStandaloneSummaryNoise\(cleaned\)/);
+});
+
 test("frontend supports editing tasks and source records", async () => {
   const source = await read("../static/app.js");
 
