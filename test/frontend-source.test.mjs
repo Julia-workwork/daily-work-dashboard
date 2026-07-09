@@ -354,6 +354,25 @@ test("tasks page supports week filtering and cleaned tag display", async () => {
   assert.match(source, /preserveWorkstreamTag/);
 });
 
+test("dashboard supports switching between current and historical months", async () => {
+  const source = await read("../static/app.js");
+  const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const renderWeeklyBlock = source.match(/function renderWeekly\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /month:\s*currentMonthKey\(\)/);
+  assert.match(source, /function currentMonthKey\(\)/);
+  assert.match(source, /function taskMonthKey\(task\)/);
+  assert.match(source, /function availableMonthKeys\(data\)/);
+  assert.match(source, /function selectedMonthKey\(data\)/);
+  assert.match(source, /function monthFilterSelect\(data\)/);
+  assert.match(source, /filterSelect\("Month",\s*"month"/);
+  assert.match(source, /state\.filters\.month/);
+  assert.match(source, /monthlyLeadershipReport\(data,\s*selectedMonthKey\(data\)\)/);
+  assert.match(source, /state\.selectedWeek = ""/);
+  assert.match(renderTasksBlock, /monthFilterSelect\(data\)/);
+  assert.match(renderWeeklyBlock, /monthFilterSelect\(data\)/);
+});
+
 test("task dialogs use selectable categories and clean escaped text while editing", async () => {
   const source = await read("../static/app.js");
 

@@ -5,6 +5,7 @@ const state = {
   selectedWeek: "",
   visibleTasks: [],
   filters: {
+    month: currentMonthKey(),
     week: "All",
     priority: "All",
     status: "All",
@@ -330,6 +331,10 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function currentMonthKey() {
+  return todayIso().slice(0, 7);
+}
+
 function loadDailyRoutineState() {
   try {
     const saved = JSON.parse(localStorage.getItem(DAILY_ROUTINE_STORAGE_KEY) || "{}");
@@ -536,6 +541,32 @@ function dateMonth(value) {
 function monthTitle(monthKey) {
   if (!monthKey) return "Current Month";
   return new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("en", { month: "long", year: "numeric" });
+}
+
+function taskMonthKey(task) {
+  return dateMonth(task.sourceDate || task.completedDate || task.dueDate || task.recordTime);
+}
+
+function availableMonthKeys(data) {
+  const months = new Set([currentMonthKey()]);
+  for (const item of data.dailyExtracts || []) {
+    const month = dateMonth(item.date);
+    if (month) months.add(month);
+  }
+  for (const task of allTasks(data)) {
+    const month = taskMonthKey(task);
+    if (month) months.add(month);
+  }
+  return [...months].sort((left, right) => right.localeCompare(left));
+}
+
+function selectedMonthKey(data) {
+  const months = availableMonthKeys(data);
+  return months.includes(state.filters.month) ? state.filters.month : currentMonthKey();
+}
+
+function monthFilterSelect(data) {
+  return filterSelect("Month", "month", availableMonthKeys(data), false);
 }
 
 function formatRangeDate(date) {
@@ -918,8 +949,7 @@ function leadershipWeekReport(week, items, weekly) {
   };
 }
 
-function monthlyLeadershipReport(data) {
-  const monthKey = latestReportMonth(data);
+function monthlyLeadershipReport(data, monthKey = latestReportMonth(data)) {
   const items = reportItemsForMonth(data, monthKey);
   const grouped = new Map();
   for (const item of items) {
@@ -1169,19 +1199,28 @@ function dailyRecordGroup(group) {
 }
 
 function renderOverview(data) {
-  const openTasks = countBy(data.tasks, (task) => !isDone(task));
-  const reviewTasks = countBy(data.tasks, (task) => task.needsReview || String(task.status).includes("Review"));
+  const monthKey = selectedMonthKey(data);
+  const monthTasks = allTasks(data).filter((task) => taskMonthKey(task) === monthKey);
+  const openTasks = countBy(monthTasks, (task) => !isDone(task));
+  const reviewTasks = countBy(monthTasks, (task) => task.needsReview || String(task.status).includes("Review"));
   const latestDaily = data.dailyExtracts[data.dailyExtracts.length - 1] || {};
-  const focusTasks = data.todayFocus.slice(0, 3);
-  const monthly = monthlyLeadershipReport(data);
+  const focusTasks = monthTasks
+    .filter((task) => !isDone(task) && (task.needsReview || String(task.status).includes("Review") || !task.dueDate || task.dueDate <= todayIso()))
+    .slice(0, 3);
+  const monthly = monthlyLeadershipReport(data, monthKey);
   const selectedReport = selectedWeeklyReport(monthly);
   const ongoingItems = weeklyOngoingItems(data, selectedReport?.week || data.weeklyReview.weekRange).slice(0, 6);
   const dailyGroups = dailyRecordGroups(data, selectedReport?.week || data.weeklyReview.weekRange);
 
   elements.overview.innerHTML = `
     ${actionHero()}
+    <section class="task-toolbar overview-toolbar">
+      <div class="filters">
+        ${monthFilterSelect(data)}
+      </div>
+    </section>
     <section class="metric-grid">
-      ${metricCard("Focus Items", data.todayFocus.length, "This week, overdue, review", "◎")}
+      ${metricCard("Focus Items", focusTasks.length, "This month, overdue, review", "◎")}
       ${metricCard("Open Tasks", openTasks, "In progress", "☷")}
       ${metricCard("Needs Review", reviewTasks, "Check these first", "!", true)}
       ${metricCard("Weekly Draft", data.weeklyReview.weekRange ? 1 : 0, "Ready to refine", "✓")}
@@ -1234,17 +1273,23 @@ function renderOverview(data) {
   `;
 
   bindJumpButtons();
+  elements.overview.querySelector("[data-filter='month']")?.addEventListener("change", (event) => {
+    state.filters.month = event.target.value;
+    state.selectedWeek = "";
+    state.filters.week = "All";
+    renderOverview(data);
+  });
   bindTaskEditor(data, elements.overview);
   bindEditTaskButtons(data, elements.overview);
 }
 
-function filterSelect(label, key, values) {
+function filterSelect(label, key, values, includeAll = true) {
   return `
     <label>
       <span>${label}</span>
       <select data-filter="${key}">
-        <option value="All">All</option>
-        ${values.map((value) => `<option value="${escapeHtml(value)}" ${state.filters[key] === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
+        ${includeAll ? '<option value="All">All</option>' : ""}
+        ${values.map((value) => `<option value="${escapeHtml(value)}" ${state.filters[key] === value ? "selected" : ""}>${escapeHtml(key === "month" ? monthTitle(value) : value)}</option>`).join("")}
       </select>
     </label>
   `;
@@ -1264,7 +1309,9 @@ function filteredTasks(data) {
   return allTasks(data).filter((task) => {
     const taskWeek = canonicalWeekLabel(task.dueDate || task.sourceDate || task.completedDate);
     const workstream = taskWorkstream(task) || "Unassigned";
+    const taskMonth = taskMonthKey(task);
     return (
+      (state.filters.month === "All" || taskMonth === selectedMonthKey(data)) &&
       (state.filters.week === "All" || taskWeek === state.filters.week) &&
       (state.filters.priority === "All" || task.priority === state.filters.priority) &&
       (state.filters.status === "All" || task.status === state.filters.status) &&
@@ -1932,8 +1979,8 @@ function bindMonthlyOngoingCreator(data) {
 }
 
 function renderTasks(data) {
+  const taskPool = allTasks(data).filter((task) => taskMonthKey(task) === selectedMonthKey(data));
   const tasks = filteredTasks(data);
-  const taskPool = allTasks(data);
   state.visibleTasks = tasks;
   elements.tasks.innerHTML = `
     <section class="page-kicker">
@@ -1942,6 +1989,7 @@ function renderTasks(data) {
     </section>
     <section class="task-toolbar">
       <div class="filters">
+        ${monthFilterSelect(data)}
         ${filterWeekSelect(taskPool)}
         ${filterSelect("Priority", "priority", unique(taskPool.map((task) => task.priority)))}
         ${filterSelect("Status", "status", unique(taskPool.map((task) => task.status)))}
@@ -1962,6 +2010,10 @@ function renderTasks(data) {
     if (!select.dataset.filter) return;
     select.addEventListener("change", () => {
       state.filters[select.dataset.filter] = select.value;
+      if (select.dataset.filter === "month") {
+        state.selectedWeek = "";
+        state.filters.week = "All";
+      }
       renderTasks(data);
     });
   });
@@ -2190,7 +2242,7 @@ function workflowTagGuide() {
 }
 
 function renderWeekly(data) {
-  const monthly = monthlyLeadershipReport(data);
+  const monthly = monthlyLeadershipReport(data, selectedMonthKey(data));
   const selectedReport = selectedWeeklyReport(monthly);
   elements.weekly.innerHTML = `
     <section class="page-kicker">
@@ -2200,6 +2252,7 @@ function renderWeekly(data) {
     <section class="monthly-report-shell">
       <div class="monthly-report-note">
         <span>${escapeHtml(monthly.sourceNote)}</span>
+        ${monthFilterSelect(data)}
         ${selectedReport ? weekFilter(monthly, selectedReport) : ""}
       </div>
       ${workflowTagGuide()}
@@ -2212,6 +2265,11 @@ function renderWeekly(data) {
     </section>
   `;
 
+  elements.weekly.querySelector("[data-filter='month']")?.addEventListener("change", (event) => {
+    state.filters.month = event.target.value;
+    state.selectedWeek = "";
+    renderWeekly(data);
+  });
   elements.weekly.querySelector("[data-week-filter]")?.addEventListener("change", (event) => {
     state.selectedWeek = event.target.value;
     renderWeekly(data);
