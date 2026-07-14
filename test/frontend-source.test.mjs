@@ -370,6 +370,26 @@ test("tasks page supports week filtering and cleaned tag display", async () => {
   assert.match(source, /preserveWorkstreamTag/);
 });
 
+test("tasks page supports keyword search across task details", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+  const filteredTasksBlock = source.match(/function filteredTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /search:\s*""/);
+  assert.match(source, /function taskSearchText\(task\)/);
+  assert.match(source, /function taskMatchesSearch\(task\)/);
+  assert.match(source, /data-task-search/);
+  assert.match(source, /placeholder="Search tasks, notes, work log"/);
+  assert.match(source, /state\.filters\.search/);
+  assert.match(source, /task\.workLog/);
+  assert.match(filteredTasksBlock, /taskMatchesSearch\(task\)/);
+  assert.match(renderTasksBlock, /data-task-search/);
+  assert.match(renderTasksBlock, /addEventListener\("input"/);
+  assert.match(styles, /\.task-search/);
+  assert.match(styles, /\.task-search input/);
+});
+
 test("dashboard supports switching between current and historical months", async () => {
   const source = await read("../static/app.js");
   const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";

@@ -762,6 +762,28 @@ main {
   font: 600 13px/1 var(--system-font);
 }
 
+.task-search {
+  min-width: min(340px, 100%);
+  flex: 1 1 300px;
+}
+
+.task-search input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--black);
+  padding: 10px 16px;
+  font: 600 14px/1.2 var(--system-font);
+  outline: none;
+}
+
+.task-search input:focus {
+  border-color: rgba(0, 113, 227, 0.5);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.12);
+}
+
 select {
   min-width: 180px;
   border: 1px solid rgba(15, 23, 42, 0.12);

@@ -11,6 +11,7 @@ const state = {
     status: "All",
     category: "All",
     workstream: "All",
+    search: "",
   },
 };
 
@@ -1345,6 +1346,32 @@ function filterWeekSelect(tasks) {
   return filterSelect("Report Week", "week", weeks);
 }
 
+function taskSearchText(task) {
+  return [
+    task.taskName,
+    task.nextAction,
+    task.workLog,
+    task.category,
+    task.priority,
+    task.status,
+    taskWorkstream(task),
+    task.dueDate,
+    task.sourceDate,
+  ]
+    .map(normalizeEscapedText)
+    .join(" ")
+    .toLowerCase();
+}
+
+function taskMatchesSearch(task) {
+  const query = String(state.filters.search || "").trim().toLowerCase();
+  if (!query) return true;
+  return query
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((term) => taskSearchText(task).includes(term));
+}
+
 function filteredTasks(data) {
   return allTasks(data).filter((task) => {
     const taskWeek = canonicalWeekLabel(task.dueDate || task.sourceDate || task.completedDate);
@@ -1356,7 +1383,8 @@ function filteredTasks(data) {
       (state.filters.priority === "All" || task.priority === state.filters.priority) &&
       (state.filters.status === "All" || task.status === state.filters.status) &&
       (state.filters.category === "All" || task.category === state.filters.category) &&
-      (state.filters.workstream === "All" || workstream === state.filters.workstream)
+      (state.filters.workstream === "All" || workstream === state.filters.workstream) &&
+      taskMatchesSearch(task)
     );
   });
 }
@@ -2029,6 +2057,10 @@ function renderTasks(data) {
     </section>
     <section class="task-toolbar">
       <div class="filters">
+        <label class="task-search">
+          <span>Search</span>
+          <input data-task-search type="search" value="${escapeHtml(state.filters.search)}" placeholder="Search tasks, notes, work log" />
+        </label>
         ${monthFilterSelect(data)}
         ${filterWeekSelect(taskPool)}
         ${filterSelect("Priority", "priority", unique(taskPool.map((task) => task.priority)))}
@@ -2056,6 +2088,10 @@ function renderTasks(data) {
       }
       renderTasks(data);
     });
+  });
+  elements.tasks.querySelector("[data-task-search]")?.addEventListener("input", (event) => {
+    state.filters.search = event.target.value;
+    renderTasks(data);
   });
   bindDailyRoutine(data);
   bindOngoingCreator(data);
