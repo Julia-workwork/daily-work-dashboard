@@ -652,6 +652,23 @@ test("frontend shows a saved dashboard snapshot while Notion syncs", async () =>
   assert.match(source, /saveWorkflowSnapshot\(payload\)/);
 });
 
+test("frontend treats fresh Notion sync as source of truth for deleted tasks", async () => {
+  const source = await read("../static/app.js");
+  const loadWorkflowBlock = source.match(/async function loadWorkflow\(options = \{\}\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /function pruneSyncedLocalTasks\(\)/);
+  assert.match(source, /state\.localTasks = state\.localTasks\.filter\(\(task\) => task\.isLocalDraft\)/);
+  assert.match(loadWorkflowBlock, /pruneSyncedLocalTasks\(\)/);
+});
+
+test("frontend refreshes again after a stale cache response", async () => {
+  const source = await read("../static/app.js");
+
+  assert.match(source, /function scheduleFreshWorkflowAfterStaleCache\(\)/);
+  assert.match(source, /loadWorkflow\(\{ forceRefresh: true, silent: true \}\)/);
+  assert.match(source, /payload\.cache\?\.status === "stale-refreshing"/);
+});
+
 test("overview focus items keep edit and colored status chips in one action area", async () => {
   const source = await read("../static/app.js");
   const styles = await read("../static/styles.css");

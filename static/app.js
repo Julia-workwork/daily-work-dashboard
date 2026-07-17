@@ -196,6 +196,10 @@ function allTasks(data) {
   return [...state.localTasks, ...data.tasks.filter((task) => !hidden.has(taskKey(task)) && !hasEditableTaskCopy(task, data.tasks))];
 }
 
+function pruneSyncedLocalTasks() {
+  state.localTasks = state.localTasks.filter((task) => task.isLocalDraft);
+}
+
 function cleanInputDate(value) {
   const text = String(value || "").trim().replaceAll("/", "-");
   const match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
@@ -2459,6 +2463,12 @@ function showWorkflowSnapshotWhileSyncing() {
   return true;
 }
 
+function scheduleFreshWorkflowAfterStaleCache() {
+  window.setTimeout(() => {
+    loadWorkflow({ forceRefresh: true, silent: true }).catch(() => {});
+  }, 1500);
+}
+
 function setDashboardLocked(locked) {
   elements.authPanel.hidden = !locked;
   document.body.classList.toggle("is-locked", locked);
@@ -2488,7 +2498,7 @@ async function login(password) {
 
 async function loadWorkflow(options = {}) {
   const showingSnapshot = !options.forceRefresh && showWorkflowSnapshotWhileSyncing();
-  if (!showingSnapshot) {
+  if (!showingSnapshot && !options.silent) {
     showState("Syncing work records...");
     setSyncLine("Syncing");
   }
@@ -2505,6 +2515,7 @@ async function loadWorkflow(options = {}) {
       }
       throw new Error(payload.error || "Unable to sync work records.");
     }
+    pruneSyncedLocalTasks();
     state.data = payload;
     saveWorkflowSnapshot(payload);
     const time = new Date(payload.updatedAt).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" });
@@ -2517,6 +2528,9 @@ async function loadWorkflow(options = {}) {
     showState(payload.syncWarning ? `Showing recent records. Latest sync failed: ${payload.syncWarning}` : syncLabel, payload.syncWarning ? "warning" : "success");
     setSyncLine(syncLabel, payload.syncWarning ? "warning" : "success");
     render();
+    if (payload.cache?.status === "stale-refreshing" && !options.forceRefresh) {
+      scheduleFreshWorkflowAfterStaleCache();
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to sync work records.";
     if (showingSnapshot) {
