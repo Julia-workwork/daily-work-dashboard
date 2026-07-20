@@ -390,6 +390,18 @@ test("tasks page supports keyword search across task details", async () => {
   assert.match(styles, /\.task-search input/);
 });
 
+test("task search refreshes only the result list so typing keeps focus", async () => {
+  const source = await read("../static/app.js");
+  const renderTaskResultsBlock = source.match(/function renderTaskResults\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /data-task-results/);
+  assert.match(source, /function taskResultsPanel\(tasks,\s*taskPool\)/);
+  assert.match(renderTaskResultsBlock, /results\.innerHTML = taskTable\(tasks,\s*taskPool\)/);
+  assert.match(renderTasksBlock, /renderTaskResults\(data\)/);
+  assert.doesNotMatch(renderTasksBlock, /state\.filters\.search = event\.target\.value;[\s\S]{0,80}renderTasks\(data\)/);
+});
+
 test("dashboard supports switching between current and historical months", async () => {
   const source = await read("../static/app.js");
   const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";

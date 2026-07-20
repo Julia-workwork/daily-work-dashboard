@@ -1393,6 +1393,10 @@ function filteredTasks(data) {
   });
 }
 
+function taskPoolForSelectedMonth(data) {
+  return allTasks(data).filter((task) => taskMonthKey(task) === selectedMonthKey(data));
+}
+
 function inlineSelect(task, field, values) {
   if (!canPatchTask(task)) {
     if (field === "priority") return chip(task.priority, priorityClass(task.priority));
@@ -1455,6 +1459,10 @@ function taskTable(tasks, taskPool) {
       }
     </div>
   `;
+}
+
+function taskResultsPanel(tasks, taskPool) {
+  return `<article class="zine-panel" data-task-results>${taskTable(tasks, taskPool)}</article>`;
 }
 
 function taskForm(data) {
@@ -1688,12 +1696,13 @@ function fillTaskEditForm(form, task) {
 }
 
 function bindEditTaskButtons(data, root = document) {
+  const dialogRoot = root.matches?.("[data-task-results]") ? elements.tasks : root;
   root.querySelectorAll("[data-edit-task]").forEach((button) => {
     button.addEventListener("click", () => {
       const task = findTaskByKey(data, button.dataset.editTask);
-      const dialog = root.querySelector("#task-edit-dialog");
-      const form = root.querySelector("#task-edit-form");
-      const note = root.querySelector("[data-edit-source-note]");
+      const dialog = dialogRoot.querySelector("#task-edit-dialog");
+      const form = dialogRoot.querySelector("#task-edit-form");
+      const note = dialogRoot.querySelector("[data-edit-source-note]");
       if (!task || !dialog || !form) return;
       form.dataset.taskKey = taskKey(task);
       fillTaskEditForm(form, task);
@@ -1744,8 +1753,8 @@ function bindTaskEditor(data, root = document) {
   });
 }
 
-function bindInlineTaskControls(data) {
-  elements.tasks.querySelectorAll("[data-inline-field]").forEach((select) => {
+function bindInlineTaskControls(data, root = elements.tasks) {
+  root.querySelectorAll("[data-inline-field]").forEach((select) => {
     select.addEventListener("change", () => updateInlineTaskField(data, select));
   });
 }
@@ -2050,8 +2059,19 @@ function bindMonthlyOngoingCreator(data) {
   });
 }
 
+function renderTaskResults(data) {
+  const taskPool = taskPoolForSelectedMonth(data);
+  const tasks = filteredTasks(data);
+  state.visibleTasks = tasks;
+  const results = elements.tasks.querySelector("[data-task-results]");
+  if (!results) return;
+  results.innerHTML = taskTable(tasks, taskPool);
+  bindInlineTaskControls(data, results);
+  bindEditTaskButtons(data, results);
+}
+
 function renderTasks(data) {
-  const taskPool = allTasks(data).filter((task) => taskMonthKey(task) === selectedMonthKey(data));
+  const taskPool = taskPoolForSelectedMonth(data);
   const tasks = filteredTasks(data);
   state.visibleTasks = tasks;
   elements.tasks.innerHTML = `
@@ -2077,7 +2097,7 @@ function renderTasks(data) {
     ${dailyRoutinePanel(data)}
     ${taskBoardOngoingPanel(data, taskPool)}
     ${taskBoardMonthlyOngoingPanel(data)}
-    <article class="zine-panel">${taskTable(tasks, taskPool)}</article>
+    ${taskResultsPanel(tasks, taskPool)}
     ${taskForm(data)}
     ${taskEditForm(data)}
   `;
@@ -2095,7 +2115,7 @@ function renderTasks(data) {
   });
   elements.tasks.querySelector("[data-task-search]")?.addEventListener("input", (event) => {
     state.filters.search = event.target.value;
-    renderTasks(data);
+    renderTaskResults(data);
   });
   bindDailyRoutine(data);
   bindOngoingCreator(data);
