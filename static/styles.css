@@ -1287,6 +1287,12 @@ select {
   color: #9b1749;
 }
 
+.inline-task-select.tone-category-event {
+  border-color: rgba(218, 165, 32, 0.28);
+  background: rgba(255, 243, 204, 0.82);
+  color: #8a5b00;
+}
+
 .inline-task-select.tone-category-julia {
   border-color: rgba(191, 90, 242, 0.24);
   background: rgba(242, 228, 255, 0.78);

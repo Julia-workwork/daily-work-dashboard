@@ -30,7 +30,7 @@ const elements = {
   tabs: [...document.querySelectorAll(".tab")],
 };
 
-const DEFAULT_TASK_CATEGORIES = ["Product", "Content", "User Feedback", "Data", "IMC", "Brand", "Julia", "Other"];
+const DEFAULT_TASK_CATEGORIES = ["Product", "Content", "User Feedback", "Data", "IMC", "Brand", "Event", "Julia", "Other"];
 const TASK_WORKSTREAMS = [
   { value: "", label: "No workstream" },
   { value: "PL", label: "PL · Product Line" },
@@ -320,6 +320,7 @@ function taskToneClass(field, value) {
     if (key.includes("feedback") || key.includes("support") || key.includes("user")) return "tone-category-feedback";
     if (key.includes("data") || key.includes("report")) return "tone-category-data";
     if (key.includes("imc") || key.includes("brand")) return "tone-category-brand";
+    if (key.includes("event") || key.includes("campaign") || key.includes("exhibition")) return "tone-category-event";
     if (key.includes("julia")) return "tone-category-julia";
     if (key.includes("social")) return "tone-category-social";
     if (key.includes("meeting") || key.includes("operation")) return "tone-category-operations";
