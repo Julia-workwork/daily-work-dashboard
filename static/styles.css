@@ -883,17 +883,20 @@ select {
 }
 
 .monthly-ongoing-shell {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
+  display: flex;
   gap: 8px;
   align-items: stretch;
+  min-width: 0;
 }
 
 .monthly-rank-control {
   display: grid;
+  flex: 0 0 76px;
+  width: 76px;
   align-content: center;
   gap: 4px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .monthly-rank-control > span {
@@ -904,7 +907,10 @@ select {
 }
 
 .monthly-rank-control select {
-  width: 100%;
+  box-sizing: border-box;
+  width: 76px;
+  min-width: 0;
+  max-width: 76px;
   min-height: 30px;
   appearance: none;
   border: 1px solid rgba(15, 23, 42, 0.1);
@@ -914,6 +920,7 @@ select {
   padding: 7px 8px;
   font: 750 10px/1 var(--system-font);
   text-align: center;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
 
@@ -936,6 +943,8 @@ select {
 }
 
 .monthly-ongoing-row {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 14px;
@@ -2236,10 +2245,17 @@ select {
 
 @media (max-width: 720px) {
   .monthly-ongoing-shell {
-    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .monthly-rank-control {
+    flex-basis: 62px;
+    width: 62px;
   }
 
   .monthly-rank-control select {
+    width: 62px;
+    max-width: 62px;
     padding-inline: 5px;
   }
 
