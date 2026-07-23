@@ -661,6 +661,11 @@ test("monthly ongoing keeps every item in a compact expandable sorted list", asy
   const monthlyPanelBlock = source.match(/function taskBoardMonthlyOngoingPanel\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
 
   assert.match(source, /function compareMonthlyOngoing\(left,\s*right\)/);
+  assert.match(source, /MONTHLY_ONGOING_RANK_STORAGE_KEY/);
+  assert.match(source, /function monthlyOngoingDashboardRank\(task\)/);
+  assert.match(source, /function saveMonthlyOngoingDashboardRank\(task,\s*rank\)/);
+  assert.match(source, /localStorage\.setItem\(MONTHLY_ONGOING_RANK_STORAGE_KEY/);
+  assert.match(source, /monthlyOngoingDashboardRank\(leftTask\) - monthlyOngoingDashboardRank\(rightTask\)/);
   assert.match(source, /priorityRank\(leftTask\.priority\) - priorityRank\(rightTask\.priority\)/);
   assert.match(source, /leftInProgress - rightInProgress/);
   assert.match(monthlyItemsBlock, /\.sort\(compareMonthlyOngoing\)/);
@@ -673,7 +678,11 @@ test("monthly ongoing keeps every item in a compact expandable sorted list", asy
   assert.match(source, /Work Log/);
   assert.match(source, /Next Action/);
   assert.match(source, /function bindMonthlyOngoingToggle\(\)/);
+  assert.match(source, /function bindMonthlyOngoingRanks\(data\)/);
+  assert.match(source, /data-monthly-dashboard-rank/);
+  assert.match(source, /Dashboard rank only/);
   assert.match(styles, /\.monthly-ongoing-row/);
+  assert.match(styles, /\.monthly-rank-control/);
   assert.match(styles, /\.monthly-ongoing-detail/);
   assert.match(styles, /\.monthly-ongoing-toolbar/);
 });

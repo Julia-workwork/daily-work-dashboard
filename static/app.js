@@ -41,6 +41,7 @@ const TASK_WORKSTREAMS = [
 const HIDDEN_SOURCE_TASK_KEYS = "daily-work-hidden-source-task-keys";
 const DAILY_ROUTINE_STORAGE_KEY = "daily-work-daily-routine";
 const WORKFLOW_SNAPSHOT_STORAGE_KEY = "daily-work-dashboard-snapshot";
+const MONTHLY_ONGOING_RANK_STORAGE_KEY = "daily-work-monthly-ongoing-ranks";
 const DEFAULT_DAILY_ROUTINE = {
   emailsDone: false,
   emailsCount: "",
@@ -1090,12 +1091,39 @@ function priorityRank(priority) {
   return 4;
 }
 
+function loadMonthlyOngoingRanks() {
+  try {
+    return JSON.parse(localStorage.getItem(MONTHLY_ONGOING_RANK_STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function monthlyOngoingRankKey(task) {
+  return task?.sourceId || taskKey(task || {});
+}
+
+function monthlyOngoingDashboardRank(task) {
+  const rank = Number(loadMonthlyOngoingRanks()[monthlyOngoingRankKey(task)]);
+  return [1, 2, 3].includes(rank) ? rank : 4;
+}
+
+function saveMonthlyOngoingDashboardRank(task, rank) {
+  const ranks = loadMonthlyOngoingRanks();
+  const key = monthlyOngoingRankKey(task);
+  const value = Number(rank);
+  if ([1, 2, 3].includes(value)) ranks[key] = value;
+  else delete ranks[key];
+  localStorage.setItem(MONTHLY_ONGOING_RANK_STORAGE_KEY, JSON.stringify(ranks));
+}
+
 function compareMonthlyOngoing(left, right) {
   const leftTask = left.task || {};
   const rightTask = right.task || {};
   const leftInProgress = String(leftTask.status || "").toLowerCase() === "in progress" ? 0 : 1;
   const rightInProgress = String(rightTask.status || "").toLowerCase() === "in progress" ? 0 : 1;
   return (
+    monthlyOngoingDashboardRank(leftTask) - monthlyOngoingDashboardRank(rightTask) ||
     priorityRank(leftTask.priority) - priorityRank(rightTask.priority) ||
     leftInProgress - rightInProgress ||
     String(leftTask.dueDate || left.date || "9999-12-31").localeCompare(String(rightTask.dueDate || right.date || "9999-12-31")) ||
@@ -1279,8 +1307,19 @@ function monthlyOngoingCompactRow(item) {
   const progress = cleanTaskText(task.nextAction || item.text) || "No current progress captured yet.";
   const workLog = cleanTaskText(task.workLog || "") || "No work log captured yet.";
   const nextAction = cleanTaskText(task.nextAction || "") || "No next action captured yet.";
+  const rank = monthlyOngoingDashboardRank(task);
   return `
-    <details class="monthly-ongoing-row">
+    <div class="monthly-ongoing-shell">
+      <label class="monthly-rank-control" title="Dashboard-only order. This is not saved to Notion.">
+        <span>Rank</span>
+        <select data-monthly-dashboard-rank="${taskKey(task)}" class="monthly-rank-${rank < 4 ? rank : "auto"}" aria-label="Dashboard rank for ${escapeHtml(title)}">
+          <option value="" ${rank === 4 ? "selected" : ""}>Auto</option>
+          <option value="1" ${rank === 1 ? "selected" : ""}>Top</option>
+          <option value="2" ${rank === 2 ? "selected" : ""}>High</option>
+          <option value="3" ${rank === 3 ? "selected" : ""}>Normal</option>
+        </select>
+      </label>
+      <details class="monthly-ongoing-row">
       <summary>
         <span class="monthly-workstream">${escapeHtml(workstream)}</span>
         <strong>${escapeHtml(title)}</strong>
@@ -1296,7 +1335,8 @@ function monthlyOngoingCompactRow(item) {
         <p><strong>Due Date</strong><span>${escapeHtml(task.dueDate || "Not set")}</span></p>
         ${editTaskButton(task, "compact-action")}
       </div>
-    </details>
+      </details>
+    </div>
   `;
 }
 
@@ -1306,7 +1346,7 @@ function monthlyOngoingList(items) {
   const hidden = items.slice(3);
   return `
     <div class="monthly-ongoing-toolbar">
-      <span>${items.length} ongoing items</span>
+      <span>${items.length} ongoing items · Dashboard rank only</span>
       ${
         hidden.length
           ? `<button class="text-action" type="button" data-toggle-monthly-ongoing data-collapsed-label="Show all ${items.length}" data-expanded-label="Collapse">Show all ${items.length}</button>`
@@ -2171,6 +2211,17 @@ function bindMonthlyOngoingToggle() {
   });
 }
 
+function bindMonthlyOngoingRanks(data) {
+  elements.tasks.querySelectorAll("[data-monthly-dashboard-rank]").forEach((select) => {
+    select.addEventListener("change", () => {
+      const task = findTaskByKey(data, select.dataset.monthlyDashboardRank);
+      if (!task) return;
+      saveMonthlyOngoingDashboardRank(task, select.value);
+      renderTasks(data);
+    });
+  });
+}
+
 function renderTaskResults(data) {
   const taskPool = taskPoolForSelectedMonth(data);
   const tasks = filteredTasks(data);
@@ -2233,6 +2284,7 @@ function renderTasks(data) {
   bindOngoingCreator(data);
   bindMonthlyOngoingCreator(data);
   bindMonthlyOngoingToggle();
+  bindMonthlyOngoingRanks(data);
   bindTaskCreator(data);
   bindTaskEditor(data, elements.tasks);
   bindEditTaskButtons(data, elements.tasks);
