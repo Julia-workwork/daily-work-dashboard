@@ -654,6 +654,30 @@ test("task board supports synced this month ongoing work separately from weekly 
   assert.match(styles, /\.task-monthly-ongoing-panel/);
 });
 
+test("monthly ongoing keeps every item in a compact expandable sorted list", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+  const monthlyItemsBlock = source.match(/function monthlyOngoingItems\(data,\s*monthKey\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const monthlyPanelBlock = source.match(/function taskBoardMonthlyOngoingPanel\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /function compareMonthlyOngoing\(left,\s*right\)/);
+  assert.match(source, /priorityRank\(leftTask\.priority\) - priorityRank\(rightTask\.priority\)/);
+  assert.match(source, /leftInProgress - rightInProgress/);
+  assert.match(monthlyItemsBlock, /\.sort\(compareMonthlyOngoing\)/);
+  assert.doesNotMatch(monthlyPanelBlock, /\.slice\(0,\s*6\)/);
+  assert.match(source, /function monthlyOngoingCompactRow\(item\)/);
+  assert.match(source, /function monthlyOngoingList\(items\)/);
+  assert.match(source, /const visible = items\.slice\(0,\s*3\)/);
+  assert.match(source, /Show all \$\{items\.length\}/);
+  assert.match(source, /Current Progress/);
+  assert.match(source, /Work Log/);
+  assert.match(source, /Next Action/);
+  assert.match(source, /function bindMonthlyOngoingToggle\(\)/);
+  assert.match(styles, /\.monthly-ongoing-row/);
+  assert.match(styles, /\.monthly-ongoing-detail/);
+  assert.match(styles, /\.monthly-ongoing-toolbar/);
+});
+
 test("frontend shows a saved dashboard snapshot while Notion syncs", async () => {
   const source = await read("../static/app.js");
 

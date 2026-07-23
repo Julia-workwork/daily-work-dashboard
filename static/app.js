@@ -1082,6 +1082,27 @@ function weeklyOngoingItems(data, weekRange) {
   return [...dailyOngoing, ...taskOngoing].filter((item) => item.text);
 }
 
+function priorityRank(priority) {
+  const key = String(priority || "").toUpperCase();
+  if (key === "P1") return 1;
+  if (key === "P2") return 2;
+  if (key === "P3") return 3;
+  return 4;
+}
+
+function compareMonthlyOngoing(left, right) {
+  const leftTask = left.task || {};
+  const rightTask = right.task || {};
+  const leftInProgress = String(leftTask.status || "").toLowerCase() === "in progress" ? 0 : 1;
+  const rightInProgress = String(rightTask.status || "").toLowerCase() === "in progress" ? 0 : 1;
+  return (
+    priorityRank(leftTask.priority) - priorityRank(rightTask.priority) ||
+    leftInProgress - rightInProgress ||
+    String(leftTask.dueDate || left.date || "9999-12-31").localeCompare(String(rightTask.dueDate || right.date || "9999-12-31")) ||
+    String(rightTask.recordTime || right.date || "").localeCompare(String(leftTask.recordTime || left.date || ""))
+  );
+}
+
 function monthlyOngoingItems(data, monthKey) {
   return data.tasks
     .filter((task) => {
@@ -1099,7 +1120,8 @@ function monthlyOngoingItems(data, monthKey) {
         task,
       };
     })
-    .filter((item) => item.text);
+    .filter((item) => item.text)
+    .sort(compareMonthlyOngoing);
 }
 
 function dailyRecordGroups(data, weekRange) {
@@ -1228,6 +1250,80 @@ function ongoingCard(item, index) {
       </div>
       ${actions}
     </article>
+  `;
+}
+
+function ongoingList(items, empty, visibleCount = 3) {
+  if (!items.length) return `<p class="empty">${escapeHtml(empty)}</p>`;
+  const visible = items.slice(0, visibleCount);
+  const hidden = items.slice(visibleCount);
+  return `
+    <div class="ongoing-list">
+      ${visible.map(ongoingCard).join("")}
+    </div>
+    ${
+      hidden.length
+        ? `<details class="ongoing-more">
+            <summary>Show remaining ${hidden.length}</summary>
+            <div class="ongoing-list">${hidden.map((item, index) => ongoingCard(item, index + visible.length)).join("")}</div>
+          </details>`
+        : ""
+    }
+  `;
+}
+
+function monthlyOngoingCompactRow(item) {
+  const task = item.task || {};
+  const workstream = taskWorkstream(task) || "JL";
+  const title = ongoingDisplayTitle(task, item.text);
+  const progress = cleanTaskText(task.nextAction || item.text) || "No current progress captured yet.";
+  const workLog = cleanTaskText(task.workLog || "") || "No work log captured yet.";
+  const nextAction = cleanTaskText(task.nextAction || "") || "No next action captured yet.";
+  return `
+    <details class="monthly-ongoing-row">
+      <summary>
+        <span class="monthly-workstream">${escapeHtml(workstream)}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <span class="monthly-category ${taskToneClass("category", task.category)}">${escapeHtml(task.category || "Other")}</span>
+        <span class="monthly-priority ${priorityClass(task.priority)}">${escapeHtml(task.priority || "P2")}</span>
+        <span class="monthly-status ${statusClass(task.status)}">${escapeHtml(task.status || "Not Started")}</span>
+        <time>${escapeHtml(task.dueDate || "No due date")}</time>
+      </summary>
+      <div class="monthly-ongoing-detail">
+        <p><strong>Current Progress</strong><span>${escapeHtml(progress)}</span></p>
+        <p><strong>Work Log</strong><span>${escapeHtml(workLog)}</span></p>
+        <p><strong>Next Action</strong><span>${escapeHtml(nextAction)}</span></p>
+        <p><strong>Due Date</strong><span>${escapeHtml(task.dueDate || "Not set")}</span></p>
+        ${editTaskButton(task, "compact-action")}
+      </div>
+    </details>
+  `;
+}
+
+function monthlyOngoingList(items) {
+  if (!items.length) return '<p class="empty">No monthly ongoing items captured yet.</p>';
+  const visible = items.slice(0, 3);
+  const hidden = items.slice(3);
+  return `
+    <div class="monthly-ongoing-toolbar">
+      <span>${items.length} ongoing items</span>
+      ${
+        hidden.length
+          ? `<button class="text-action" type="button" data-toggle-monthly-ongoing data-collapsed-label="Show all ${items.length}" data-expanded-label="Collapse">Show all ${items.length}</button>`
+          : ""
+      }
+    </div>
+    <div class="monthly-ongoing-list">
+      ${visible.map(monthlyOngoingCompactRow).join("")}
+      <div data-monthly-ongoing-extra hidden>
+        ${hidden.map(monthlyOngoingCompactRow).join("")}
+      </div>
+    </div>
+    ${
+      hidden.length
+        ? `<button class="monthly-show-more" type="button" data-toggle-monthly-ongoing data-collapsed-label="Show ${hidden.length} more">Show ${hidden.length} more</button>`
+        : ""
+    }
   `;
 }
 
@@ -1977,9 +2073,7 @@ function taskBoardOngoingPanel(data, taskPool) {
         <button class="text-action primary-action" type="button" data-open-ongoing>Add Ongoing</button>
       </div>
       <div class="task-ongoing-body">
-        <div class="ongoing-list">
-          ${ongoingItems.length ? ongoingItems.map(ongoingCard).join("") : '<p class="empty">No weekly ongoing items captured yet.</p>'}
-        </div>
+        ${ongoingList(ongoingItems, "No weekly ongoing items captured yet.", 6)}
         <p class="routine-save-status" data-ongoing-save-status></p>
       </div>
     </section>
@@ -1988,7 +2082,7 @@ function taskBoardOngoingPanel(data, taskPool) {
 
 function taskBoardMonthlyOngoingPanel(data) {
   const monthKey = todayIso().slice(0, 7);
-  const ongoingItems = monthlyOngoingItems(data, monthKey).slice(0, 6);
+  const ongoingItems = monthlyOngoingItems(data, monthKey);
   return `
     <section class="task-ongoing-panel task-monthly-ongoing-panel" aria-label="This Month Ongoing">
       <div class="routine-heading">
@@ -1997,9 +2091,7 @@ function taskBoardMonthlyOngoingPanel(data) {
         <button class="text-action primary-action" type="button" data-open-monthly-ongoing>Add Monthly Ongoing</button>
       </div>
       <div class="task-ongoing-body">
-        <div class="ongoing-list">
-          ${ongoingItems.length ? ongoingItems.map(ongoingCard).join("") : '<p class="empty">No monthly ongoing items captured yet.</p>'}
-        </div>
+        ${monthlyOngoingList(ongoingItems)}
         <p class="routine-save-status" data-monthly-ongoing-save-status></p>
       </div>
     </section>
@@ -2057,6 +2149,25 @@ function bindMonthlyOngoingCreator(data) {
     if (status) status.textContent = "Fill the monthly ongoing details, then save to Notion.";
     dialog.showModal();
     form.elements.taskName.focus();
+  });
+}
+
+function bindMonthlyOngoingToggle() {
+  const extra = elements.tasks.querySelector("[data-monthly-ongoing-extra]");
+  const toggles = [...elements.tasks.querySelectorAll("[data-toggle-monthly-ongoing]")];
+  if (!extra || !toggles.length) return;
+  toggles.forEach((button) => {
+    button.addEventListener("click", () => {
+      const expanding = extra.hidden;
+      extra.hidden = !expanding;
+      toggles.forEach((toggle) => {
+        if (toggle.classList.contains("monthly-show-more")) {
+          toggle.textContent = expanding ? "Collapse" : toggle.dataset.collapsedLabel || toggle.textContent;
+          return;
+        }
+        toggle.textContent = expanding ? toggle.dataset.expandedLabel : toggle.dataset.collapsedLabel;
+      });
+    });
   });
 }
 
@@ -2121,6 +2232,7 @@ function renderTasks(data) {
   bindDailyRoutine(data);
   bindOngoingCreator(data);
   bindMonthlyOngoingCreator(data);
+  bindMonthlyOngoingToggle();
   bindTaskCreator(data);
   bindTaskEditor(data, elements.tasks);
   bindEditTaskButtons(data, elements.tasks);
