@@ -103,6 +103,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
                   "Created Time": { created_time: "2026-07-04T06:35:00.000Z" },
                   "Next Action": { rich_text: [{ plain_text: "Ask for test video" }] },
                   "Work Log": { rich_text: [{ plain_text: "Handled 5 emails" }] },
+                  "Dashboard Rank": { select: { name: "High" } },
                   Review: { checkbox: true },
                 },
               },
@@ -122,6 +123,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
   assert.equal(tasks[0].status, "In Progress");
   assert.equal(tasks[0].workstream, "PL");
   assert.equal(tasks[0].workLog, "Handled 5 emails");
+  assert.equal(tasks[0].dashboardRank, "High");
   assert.equal(tasks[0].needsReview, true);
   assert.equal(tasks[0].notionLink, "https://notion.so/task");
   assert.equal(tasks[0].recordTime, "2026-07-04T06:35:00.000Z");

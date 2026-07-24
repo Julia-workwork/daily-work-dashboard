@@ -13,6 +13,11 @@ The app reads the Daily Work page as markdown and shows the current natural mont
 
 New tasks are written only to the separate Workflow Tasks database.
 
+The Workflow Tasks database includes a `Dashboard Rank` select property with
+`Top`, `High`, and `Normal` options. The dashboard writes monthly ordering to
+this property so the order persists across browsers and devices. The property
+can be hidden in the Notion table view.
+
 ## Run
 
 ```bash

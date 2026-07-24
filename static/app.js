@@ -1103,17 +1103,29 @@ function monthlyOngoingRankKey(task) {
   return task?.sourceId || taskKey(task || {});
 }
 
-function monthlyOngoingDashboardRank(task) {
-  const rank = Number(loadMonthlyOngoingRanks()[monthlyOngoingRankKey(task)]);
-  return [1, 2, 3].includes(rank) ? rank : 4;
+function dashboardRankNumber(value) {
+  const rank = String(value || "").trim().toLowerCase();
+  if (rank === "top") return 1;
+  if (rank === "high") return 2;
+  if (rank === "normal") return 3;
+  return 4;
 }
 
-function saveMonthlyOngoingDashboardRank(task, rank) {
+function dashboardRankName(task) {
+  const notionRank = dashboardRankNumber(task?.dashboardRank);
+  if (notionRank < 4) return ["", "Top", "High", "Normal"][notionRank];
+  const legacyRank = Number(loadMonthlyOngoingRanks()[monthlyOngoingRankKey(task)]);
+  return ["", "Top", "High", "Normal"][legacyRank] || "";
+}
+
+function monthlyOngoingDashboardRank(task) {
+  return dashboardRankNumber(dashboardRankName(task));
+}
+
+function clearLegacyMonthlyOngoingDashboardRank(task) {
   const ranks = loadMonthlyOngoingRanks();
   const key = monthlyOngoingRankKey(task);
-  const value = Number(rank);
-  if ([1, 2, 3].includes(value)) ranks[key] = value;
-  else delete ranks[key];
+  delete ranks[key];
   localStorage.setItem(MONTHLY_ONGOING_RANK_STORAGE_KEY, JSON.stringify(ranks));
 }
 
@@ -1308,15 +1320,16 @@ function monthlyOngoingCompactRow(item) {
   const workLog = cleanTaskText(task.workLog || "") || "No work log captured yet.";
   const nextAction = cleanTaskText(task.nextAction || "") || "No next action captured yet.";
   const rank = monthlyOngoingDashboardRank(task);
+  const rankName = dashboardRankName(task);
   return `
     <div class="monthly-ongoing-shell">
-      <label class="monthly-rank-control" title="Dashboard-only order. This is not saved to Notion.">
+      <label class="monthly-rank-control" title="Saved in Notion for Dashboard sorting.">
         <span>Rank</span>
         <select data-monthly-dashboard-rank="${taskKey(task)}" class="monthly-rank-${rank < 4 ? rank : "auto"}" aria-label="Dashboard rank for ${escapeHtml(title)}">
-          <option value="" ${rank === 4 ? "selected" : ""}>Auto</option>
-          <option value="1" ${rank === 1 ? "selected" : ""}>Top</option>
-          <option value="2" ${rank === 2 ? "selected" : ""}>High</option>
-          <option value="3" ${rank === 3 ? "selected" : ""}>Normal</option>
+          <option value="" ${!rankName ? "selected" : ""}>Auto</option>
+          <option value="Top" ${rankName === "Top" ? "selected" : ""}>Top</option>
+          <option value="High" ${rankName === "High" ? "selected" : ""}>High</option>
+          <option value="Normal" ${rankName === "Normal" ? "selected" : ""}>Normal</option>
         </select>
       </label>
       <details class="monthly-ongoing-row">
@@ -1346,7 +1359,7 @@ function monthlyOngoingList(items) {
   const hidden = items.slice(3);
   return `
     <div class="monthly-ongoing-toolbar">
-      <span>${items.length} ongoing items · Dashboard rank only</span>
+      <span>${items.length} ongoing items · Dashboard order</span>
       ${
         hidden.length
           ? `<button class="text-action" type="button" data-toggle-monthly-ongoing data-collapsed-label="Show all ${items.length}" data-expanded-label="Collapse">Show all ${items.length}</button>`
@@ -2213,11 +2226,24 @@ function bindMonthlyOngoingToggle() {
 
 function bindMonthlyOngoingRanks(data) {
   elements.tasks.querySelectorAll("[data-monthly-dashboard-rank]").forEach((select) => {
-    select.addEventListener("change", () => {
+    select.addEventListener("change", async () => {
       const task = findTaskByKey(data, select.dataset.monthlyDashboardRank);
       if (!task) return;
-      saveMonthlyOngoingDashboardRank(task, select.value);
-      renderTasks(data);
+      const previousValue = dashboardRankName(task);
+      const updatedTask = { ...task, dashboardRank: select.value };
+      select.disabled = true;
+      try {
+        const result = await saveTaskEdit(updatedTask);
+        const savedTask = result.task || updatedTask;
+        replaceTaskInState(data, savedTask, taskKey(task));
+        clearLegacyMonthlyOngoingDashboardRank(task);
+        renderTasks(data);
+      } catch (error) {
+        select.value = previousValue;
+        showState(error instanceof Error ? error.message : "Could not save Dashboard rank to Notion.", "error");
+      } finally {
+        select.disabled = false;
+      }
     });
   });
 }

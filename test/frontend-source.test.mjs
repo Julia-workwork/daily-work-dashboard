@@ -663,7 +663,9 @@ test("monthly ongoing keeps every item in a compact expandable sorted list", asy
   assert.match(source, /function compareMonthlyOngoing\(left,\s*right\)/);
   assert.match(source, /MONTHLY_ONGOING_RANK_STORAGE_KEY/);
   assert.match(source, /function monthlyOngoingDashboardRank\(task\)/);
-  assert.match(source, /function saveMonthlyOngoingDashboardRank\(task,\s*rank\)/);
+  assert.match(source, /function dashboardRankName\(task\)/);
+  assert.match(source, /task\?\.dashboardRank/);
+  assert.match(source, /function clearLegacyMonthlyOngoingDashboardRank\(task\)/);
   assert.match(source, /localStorage\.setItem\(MONTHLY_ONGOING_RANK_STORAGE_KEY/);
   assert.match(source, /monthlyOngoingDashboardRank\(leftTask\) - monthlyOngoingDashboardRank\(rightTask\)/);
   assert.match(source, /priorityRank\(leftTask\.priority\) - priorityRank\(rightTask\.priority\)/);
@@ -680,7 +682,9 @@ test("monthly ongoing keeps every item in a compact expandable sorted list", asy
   assert.match(source, /function bindMonthlyOngoingToggle\(\)/);
   assert.match(source, /function bindMonthlyOngoingRanks\(data\)/);
   assert.match(source, /data-monthly-dashboard-rank/);
-  assert.match(source, /Dashboard rank only/);
+  assert.match(source, /dashboardRank:\s*select\.value/);
+  assert.match(source, /saveTaskEdit\(updatedTask\)/);
+  assert.match(source, /Dashboard order/);
   assert.match(styles, /\.monthly-ongoing-row/);
   assert.match(styles, /\.monthly-rank-control/);
   assert.match(styles, /\.monthly-ongoing-shell\s*\{[\s\S]*display:\s*flex/);

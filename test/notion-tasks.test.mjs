@@ -13,6 +13,7 @@ test("buildNotionTaskPayload maps dashboard task fields to Workflow Tasks proper
     nextAction: "检查字幕并发布 YouTube",
     workLog: "完成粗剪 1 条",
     needsReview: true,
+    dashboardRank: "Top",
   });
 
   assert.deepEqual(payload.properties, {
@@ -25,7 +26,17 @@ test("buildNotionTaskPayload maps dashboard task fields to Workflow Tasks proper
     "Next Action": { rich_text: [{ text: { content: "检查字幕并发布 YouTube" } }] },
     "Work Log": { rich_text: [{ text: { content: "完成粗剪 1 条" } }] },
     "Needs Review": { checkbox: true },
+    "Dashboard Rank": { select: { name: "Top" } },
   });
+});
+
+test("buildNotionTaskPayload clears Dashboard Rank when automatic ordering is selected", () => {
+  const payload = buildNotionTaskPayload({
+    taskName: "Monthly ongoing work",
+    dashboardRank: "",
+  });
+
+  assert.equal(payload.properties["Dashboard Rank"].select, null);
 });
 
 test("buildNotionTaskPayload normalizes slash date values before sending to Notion", () => {
