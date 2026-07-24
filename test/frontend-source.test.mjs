@@ -673,6 +673,7 @@ test("monthly ongoing keeps every item in a compact expandable sorted list", asy
   assert.match(monthlyItemsBlock, /\.sort\(compareMonthlyOngoing\)/);
   assert.doesNotMatch(monthlyPanelBlock, /\.slice\(0,\s*6\)/);
   assert.match(source, /function monthlyOngoingCompactRow\(item\)/);
+  assert.match(source, /\^unassigned\$\/i\.test\(rawWorkstream\) \? "—" : rawWorkstream/);
   assert.match(source, /function monthlyOngoingList\(items\)/);
   assert.match(source, /const visible = items\.slice\(0,\s*3\)/);
   assert.match(source, /Show all \$\{items\.length\}/);
@@ -689,6 +690,8 @@ test("monthly ongoing keeps every item in a compact expandable sorted list", asy
   assert.match(source, />02 High</);
   assert.match(source, />03 Normal</);
   assert.match(styles, /\.monthly-ongoing-row/);
+  assert.match(styles, /\.monthly-workstream\s*\{[\s\S]*max-width:\s*100%/);
+  assert.match(styles, /\.monthly-workstream\s*\{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(styles, /\.monthly-rank-control/);
   assert.match(styles, /\.monthly-rank-control \.monthly-rank-auto/);
   assert.match(styles, /border-left-color:\s*#ff5a5f/);

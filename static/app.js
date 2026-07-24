@@ -1314,7 +1314,8 @@ function ongoingList(items, empty, visibleCount = 3) {
 
 function monthlyOngoingCompactRow(item) {
   const task = item.task || {};
-  const workstream = taskWorkstream(task) || "JL";
+  const rawWorkstream = taskWorkstream(task);
+  const workstream = !rawWorkstream || /^unassigned$/i.test(rawWorkstream) ? "—" : rawWorkstream;
   const title = ongoingDisplayTitle(task, item.text);
   const progress = cleanTaskText(task.nextAction || item.text) || "No current progress captured yet.";
   const workLog = cleanTaskText(task.workLog || "") || "No work log captured yet.";
@@ -1334,7 +1335,7 @@ function monthlyOngoingCompactRow(item) {
       </label>
       <details class="monthly-ongoing-row">
       <summary>
-        <span class="monthly-workstream">${escapeHtml(workstream)}</span>
+        <span class="monthly-workstream" title="${escapeHtml(rawWorkstream || "No workstream")}">${escapeHtml(workstream)}</span>
         <strong>${escapeHtml(title)}</strong>
         <span class="monthly-category ${taskToneClass("category", task.category)}">${escapeHtml(task.category || "Other")}</span>
         <span class="monthly-priority ${priorityClass(task.priority)}">${escapeHtml(task.priority || "P2")}</span>

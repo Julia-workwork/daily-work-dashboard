@@ -1022,10 +1022,15 @@ select {
 }
 
 .monthly-workstream {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   justify-content: center;
-  min-width: 38px;
+  overflow: hidden;
   background: #1d1d1f;
   color: #fff;
+  text-overflow: ellipsis;
 }
 
 .monthly-category.tone-category-product {
