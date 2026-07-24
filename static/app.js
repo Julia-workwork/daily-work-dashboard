@@ -246,6 +246,15 @@ function normalizeWorkstream(value) {
   return value === "BD" ? "BR" : value;
 }
 
+function workstreamToneClass(value) {
+  const workstream = normalizeWorkstream(value);
+  if (workstream === "PL") return "workstream-pl";
+  if (workstream === "BR") return "workstream-br";
+  if (workstream === "IMC") return "workstream-imc";
+  if (workstream === "JL") return "workstream-jl";
+  return "workstream-unassigned";
+}
+
 function applyWorkstreamPrefix(taskName, workstream) {
   const cleanName = stripWorkstreamPrefix(taskName);
   const tag = normalizeWorkstream(workstream);
@@ -1335,7 +1344,7 @@ function monthlyOngoingCompactRow(item) {
       </label>
       <details class="monthly-ongoing-row">
       <summary>
-        <span class="monthly-workstream" title="${escapeHtml(rawWorkstream || "No workstream")}">${escapeHtml(workstream)}</span>
+        <span class="monthly-workstream ${workstreamToneClass(rawWorkstream)}" title="${escapeHtml(rawWorkstream || "No workstream")}">${escapeHtml(workstream)}</span>
         <strong>${escapeHtml(title)}</strong>
         <span class="monthly-category ${taskToneClass("category", task.category)}">${escapeHtml(task.category || "Other")}</span>
         <span class="monthly-priority ${priorityClass(task.priority)}">${escapeHtml(task.priority || "P2")}</span>

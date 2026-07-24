@@ -1028,9 +1028,38 @@ select {
   max-width: 100%;
   justify-content: center;
   overflow: hidden;
-  background: #1d1d1f;
-  color: #fff;
+  min-height: 28px;
   text-overflow: ellipsis;
+}
+
+.monthly-workstream.workstream-pl {
+  border-color: #bfd9f7;
+  background: #e8f2ff;
+  color: #0a5aa8;
+}
+
+.monthly-workstream.workstream-br {
+  border-color: #f2c6da;
+  background: #fcebf3;
+  color: #a92764;
+}
+
+.monthly-workstream.workstream-imc {
+  border-color: #b7e5da;
+  background: #e4f7f2;
+  color: #0d6b5a;
+}
+
+.monthly-workstream.workstream-jl {
+  border-color: #dccaf5;
+  background: #f1eafe;
+  color: #6d3bb5;
+}
+
+.monthly-workstream.workstream-unassigned {
+  border-color: #dde1e6;
+  background: #f1f3f5;
+  color: #6b7280;
 }
 
 .monthly-category.tone-category-product {
