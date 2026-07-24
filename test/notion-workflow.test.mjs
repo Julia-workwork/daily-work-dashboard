@@ -299,6 +299,27 @@ test("notionWorkflowSource reads Daily Work markdown and Workflow Tasks from Not
             json: async () => ({ markdown: DAILY_MARKDOWN }),
           };
         }
+        if (url === "https://api.notion.com/v1/data_sources/tasks-source/query") {
+          return {
+            ok: true,
+            json: async () => ({
+              results: [
+                {
+                  id: "monthly-task",
+                  properties: {
+                    "Task Name": { title: [{ plain_text: "[JL] Monthly Ongoing - Campaign" }] },
+                    Workstream: { select: { name: "JL" } },
+                    Category: { select: { name: "Event" } },
+                    Priority: { select: { name: "P1" } },
+                    Status: { status: { name: "In progress" } },
+                    "Due Date": { date: { start: "2026-06-30" } },
+                    "Dashboard Rank": { select: { name: "High" } },
+                  },
+                },
+              ],
+            }),
+          };
+        }
         return {
           ok: true,
           json: async () => ({ results: [] }),
@@ -311,6 +332,12 @@ test("notionWorkflowSource reads Daily Work markdown and Workflow Tasks from Not
   assert.equal(source.dailyExtracts[0][0], "Date");
   assert.equal(source.dailyExtracts[1][0], "2026-06-22");
   assert.equal(source.weeklyReview.at(-1)[0], "2026.06.22-2026.06.27");
+  assert.equal(source.tasks[0].includes("Workstream"), true);
+  assert.equal(source.tasks[0].includes("Dashboard Rank"), true);
+  const sourceIdIndex = source.tasks[0].indexOf("Source ID");
+  const notionTaskRow = source.tasks.find((row) => row[sourceIdIndex] === "monthly-task");
+  assert.equal(notionTaskRow[source.tasks[0].indexOf("Workstream")], "JL");
+  assert.equal(notionTaskRow[source.tasks[0].indexOf("Dashboard Rank")], "High");
   assert.deepEqual(requests, [
     "https://api.notion.com/v1/blocks/daily-page/children?page_size=100",
     "https://api.notion.com/v1/pages/daily-page/markdown",

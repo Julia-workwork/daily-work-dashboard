@@ -355,6 +355,45 @@ test("PATCH /api/notion/tasks updates an existing Workflow Tasks row", async () 
   assert.equal(calls[0].task.taskName, "Updated task");
 });
 
+test("PATCH /api/notion/tasks updates the workflow cache before the next page load", async () => {
+  let sourceCalls = 0;
+  const server = createAppServer({
+    notionToken: "secret-token",
+    notionDailyWorkPageId: "daily-page",
+    notionTasksDataSourceId: "tasks-source",
+    fetchNotionSource: async () => {
+      sourceCalls += 1;
+      return {
+        dailyExtracts: [["Date"], ["2026-07-24"]],
+        tasks: [
+          ["Task Name", "Workstream", "Category", "Priority", "Status", "Due Date", "Source ID", "Source Type", "Dashboard Rank"],
+          ["Monthly campaign", "BR", "Event", "P1", "In Progress", "2026-07-31", "task-page-id", "workflow-task", ""],
+        ],
+        weeklyReview: [["Week Range"], ["2026.07.20-2026.07.26"]],
+        categorySummary: [["Category"]],
+        settings: [["Type", "Value"]],
+        source: { kind: "notion", month: "2026-07" },
+      };
+    },
+    updateNotionTask: async () => ({ id: "task-page-id", url: "https://notion.so/task-row" }),
+    today: "2026-07-24",
+  });
+
+  const first = await request(server, "/api/workflow");
+  const patch = await request(server, "/api/notion/tasks", {
+    method: "PATCH",
+    body: JSON.stringify({
+      ...first.json().tasks[0],
+      dashboardRank: "Top",
+    }),
+  });
+  const refreshedPage = await request(server, "/api/workflow");
+
+  assert.equal(patch.status, 200);
+  assert.equal(sourceCalls, 1);
+  assert.equal(refreshedPage.json().tasks[0].dashboardRank, "Top");
+});
+
 test("PATCH /api/notion/tasks returns the real API validation error", async () => {
   const server = createAppServer({
     notionToken: "secret-token",

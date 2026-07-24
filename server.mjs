@@ -133,6 +133,41 @@ export function createAppServer(options = {}) {
   let workflowCache = null;
   let workflowLoadPromise = null;
 
+  function updateCachedTask(task, metadata = {}) {
+    if (!workflowCache?.payload || !Array.isArray(workflowCache.payload.tasks)) return;
+
+    const sourceId = clean(metadata.sourceId || task.sourceId);
+    const sourceType = clean(metadata.sourceType || task.sourceType) || "workflow-task";
+    const notionUrl = clean(metadata.notionUrl || task.notionUrl || task.notionLink);
+    const tasks = [...workflowCache.payload.tasks];
+    const index = tasks.findIndex((candidate) => {
+      if (sourceId) return clean(candidate.sourceId) === sourceId;
+      return (
+        clean(candidate.taskName) === clean(task.taskName) &&
+        clean(candidate.dueDate) === clean(task.dueDate)
+      );
+    });
+    const cachedTask = index >= 0 ? tasks[index] : {};
+    const updatedTask = {
+      ...cachedTask,
+      ...task,
+      sourceId,
+      sourceType,
+      ...(notionUrl ? { notionUrl, notionLink: notionUrl } : {}),
+    };
+
+    if (index >= 0) tasks[index] = updatedTask;
+    else tasks.unshift(updatedTask);
+    workflowCache = {
+      payload: {
+        ...workflowCache.payload,
+        tasks,
+        updatedAt: new Date().toISOString(),
+      },
+      cachedAt: Date.now(),
+    };
+  }
+
   function cachedWorkflowPayload(status, extra = {}) {
     return {
       ...workflowCache.payload,
@@ -236,6 +271,11 @@ export function createAppServer(options = {}) {
           dataSourceId: notionTasksDataSourceId,
           task,
         });
+        updateCachedTask(task, {
+          sourceId: result.id,
+          sourceType: "workflow-task",
+          notionUrl: result.url,
+        });
         sendJson(res, 201, {
           ok: true,
           sourceId: result.id,
@@ -257,6 +297,11 @@ export function createAppServer(options = {}) {
           pageId: clean(task.sourceId),
           task,
         });
+        updateCachedTask(task, {
+          sourceId: result.id || task.sourceId,
+          sourceType: "workflow-task",
+          notionUrl: result.url,
+        });
         sendJson(res, 200, {
           ok: true,
           notionUrl: result.url,
@@ -275,6 +320,10 @@ export function createAppServer(options = {}) {
           token: notionToken,
           blockId: clean(task.sourceId),
           task,
+        });
+        updateCachedTask(task, {
+          sourceId: result.id || task.sourceId,
+          sourceType: "daily-work",
         });
         sendJson(res, 200, {
           ok: true,

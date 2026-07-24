@@ -87,8 +87,8 @@ test("buildDashboard normalizes tabs into dashboard response", () => {
         ["46190", "Wednesday", "2026.06.15-2026.06.18", "notion", "done"],
       ],
       tasks: [
-        ["Task Name", "Category", "Priority", "Status", "Due Date", "Source Date", "Notion Link", "Next Action", "Needs Review", "Completed Date"],
-        ["跟IMC 对一下用户的标签，给到研发这边", "Data Review", "P1", "Waiting on Others", "46191", "46190", "notion", "对齐用户标签", "TRUE", ""],
+        ["Task Name", "Workstream", "Category", "Priority", "Status", "Due Date", "Source Date", "Notion Link", "Next Action", "Needs Review", "Completed Date", "Dashboard Rank"],
+        ["跟IMC 对一下用户的标签，给到研发这边", "IMC", "Data Review", "P1", "Waiting on Others", "46191", "46190", "notion", "对齐用户标签", "TRUE", "", "Top"],
       ],
       weeklyReview: [
         ["Week Range", "Key Outcomes", "Category Summary", "Data / Links", "Risks / Issues", "Continued Follow-ups", "Next Week Plan", "Draft Weekly Report"],
@@ -112,6 +112,8 @@ test("buildDashboard normalizes tabs into dashboard response", () => {
 
   assert.equal(dashboard.dailyExtracts[0].date, "2026-06-17");
   assert.equal(dashboard.tasks[0].taskName, "跟IMC 对一下用户的标签，给到研发这边");
+  assert.equal(dashboard.tasks[0].workstream, "IMC");
+  assert.equal(dashboard.tasks[0].dashboardRank, "Top");
   assert.equal(dashboard.todayFocus.length, 1);
   assert.equal(dashboard.weeklyReview.draftWeeklyReport, "周报");
   assert.equal(dashboard.categorySummary[0].category, "Data Review");
