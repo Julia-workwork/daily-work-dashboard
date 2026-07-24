@@ -1327,9 +1327,9 @@ function monthlyOngoingCompactRow(item) {
         <span>Rank</span>
         <select data-monthly-dashboard-rank="${taskKey(task)}" class="monthly-rank-${rank < 4 ? rank : "auto"}" aria-label="Dashboard rank for ${escapeHtml(title)}">
           <option value="" ${!rankName ? "selected" : ""}>Auto</option>
-          <option value="Top" ${rankName === "Top" ? "selected" : ""}>Top</option>
-          <option value="High" ${rankName === "High" ? "selected" : ""}>High</option>
-          <option value="Normal" ${rankName === "Normal" ? "selected" : ""}>Normal</option>
+          <option value="Top" ${rankName === "Top" ? "selected" : ""}>01 Top</option>
+          <option value="High" ${rankName === "High" ? "selected" : ""}>02 High</option>
+          <option value="Normal" ${rankName === "Normal" ? "selected" : ""}>03 Normal</option>
         </select>
       </label>
       <details class="monthly-ongoing-row">

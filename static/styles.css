@@ -913,33 +913,48 @@ select {
   max-width: 76px;
   min-height: 30px;
   appearance: none;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-left-width: 4px;
   border-radius: 999px;
-  background: rgba(245, 246, 248, 0.9);
+  background: rgba(255, 255, 255, 0.82);
   color: #4b5563;
-  padding: 7px 8px;
+  padding: 7px 6px;
   font: 750 10px/1 var(--system-font);
   text-align: center;
   text-overflow: ellipsis;
   cursor: pointer;
 }
 
+.monthly-rank-control .monthly-rank-auto {
+  border-left-color: #c7cbd1;
+  background: rgba(255, 255, 255, 0.82);
+  color: #697180;
+}
+
 .monthly-rank-control .monthly-rank-1 {
-  border-color: rgba(210, 226, 0, 0.54);
-  background: rgba(233, 255, 45, 0.64);
-  color: #171900;
+  border-color: rgba(255, 90, 95, 0.28);
+  border-left-color: #ff5a5f;
+  background: rgba(255, 90, 95, 0.1);
+  color: #b4232a;
 }
 
 .monthly-rank-control .monthly-rank-2 {
-  border-color: rgba(0, 113, 227, 0.24);
-  background: rgba(220, 238, 255, 0.82);
-  color: #064f9e;
+  border-color: rgba(245, 166, 35, 0.3);
+  border-left-color: #f5a623;
+  background: rgba(245, 166, 35, 0.12);
+  color: #8b5700;
 }
 
 .monthly-rank-control .monthly-rank-3 {
-  border-color: rgba(175, 82, 222, 0.2);
-  background: rgba(244, 230, 255, 0.78);
-  color: #6c2aa0;
+  border-color: rgba(100, 116, 139, 0.22);
+  border-left-color: #64748b;
+  background: rgba(100, 116, 139, 0.09);
+  color: #475569;
+}
+
+.monthly-rank-control select:disabled {
+  cursor: wait;
+  opacity: 0.62;
 }
 
 .monthly-ongoing-row {
@@ -2249,13 +2264,13 @@ select {
   }
 
   .monthly-rank-control {
-    flex-basis: 62px;
-    width: 62px;
+    flex-basis: 70px;
+    width: 70px;
   }
 
   .monthly-rank-control select {
-    width: 62px;
-    max-width: 62px;
+    width: 70px;
+    max-width: 70px;
     padding-inline: 5px;
   }
 

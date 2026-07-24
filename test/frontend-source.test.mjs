@@ -685,8 +685,15 @@ test("monthly ongoing keeps every item in a compact expandable sorted list", asy
   assert.match(source, /dashboardRank:\s*select\.value/);
   assert.match(source, /saveTaskEdit\(updatedTask\)/);
   assert.match(source, /Dashboard order/);
+  assert.match(source, />01 Top</);
+  assert.match(source, />02 High</);
+  assert.match(source, />03 Normal</);
   assert.match(styles, /\.monthly-ongoing-row/);
   assert.match(styles, /\.monthly-rank-control/);
+  assert.match(styles, /\.monthly-rank-control \.monthly-rank-auto/);
+  assert.match(styles, /border-left-color:\s*#ff5a5f/);
+  assert.match(styles, /border-left-color:\s*#f5a623/);
+  assert.match(styles, /border-left-color:\s*#64748b/);
   assert.match(styles, /\.monthly-ongoing-shell\s*\{[\s\S]*display:\s*flex/);
   assert.match(styles, /\.monthly-rank-control\s*\{[\s\S]*flex:\s*0 0 76px/);
   assert.match(styles, /\.monthly-rank-control select\s*\{[\s\S]*max-width:\s*76px/);
