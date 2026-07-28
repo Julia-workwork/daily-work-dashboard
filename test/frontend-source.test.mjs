@@ -643,6 +643,13 @@ test("task board supports synced this month ongoing work separately from weekly 
 
   assert.match(source, /function isWorkflowMonthlyOngoingTask\(task\)/);
   assert.match(source, /function monthlyOngoingItems\(data,\s*monthKey\)/);
+  assert.match(source, /function monthlyOngoingStartMonth\(task\)/);
+  assert.match(source, /function monthlyOngoingEndMonth\(task\)/);
+  assert.match(source, /function isMonthlyOngoingActiveInMonth\(task,\s*monthKey\)/);
+  assert.match(source, /startMonth <= monthKey/);
+  assert.match(source, /!endMonth \|\| monthKey <= endMonth/);
+  assert.match(source, /isMonthlyOngoingActiveInMonth\(task,\s*monthKey\)/);
+  assert.match(source, /isWorkflowMonthlyOngoingTask\(task\)[\s\S]*isMonthlyOngoingActiveInMonth\(task,\s*monthKey\)[\s\S]*taskMonthKey\(task\) === monthKey/);
   assert.match(source, /function taskBoardMonthlyOngoingPanel\(data\)/);
   assert.match(source, /function bindMonthlyOngoingCreator\(data\)/);
   assert.match(source, /data-open-monthly-ongoing/);

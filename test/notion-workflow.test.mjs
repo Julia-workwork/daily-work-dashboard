@@ -127,6 +127,7 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
   assert.equal(tasks[0].needsReview, true);
   assert.equal(tasks[0].notionLink, "https://notion.so/task");
   assert.equal(tasks[0].recordTime, "2026-07-04T06:35:00.000Z");
+  assert.equal(tasks[0].sourceDate, "2026-07-04");
 });
 
 test("fetchDailyWorkBlocks maps Notion todo blocks into editable daily source tasks", async () => {
@@ -306,6 +307,8 @@ test("notionWorkflowSource reads Daily Work markdown and Workflow Tasks from Not
               results: [
                 {
                   id: "monthly-task",
+                  created_time: "2026-06-03T08:30:00.000Z",
+                  last_edited_time: "2026-06-29T10:00:00.000Z",
                   properties: {
                     "Task Name": { title: [{ plain_text: "[JL] Monthly Ongoing - Campaign" }] },
                     Workstream: { select: { name: "JL" } },
@@ -338,6 +341,7 @@ test("notionWorkflowSource reads Daily Work markdown and Workflow Tasks from Not
   const notionTaskRow = source.tasks.find((row) => row[sourceIdIndex] === "monthly-task");
   assert.equal(notionTaskRow[source.tasks[0].indexOf("Workstream")], "JL");
   assert.equal(notionTaskRow[source.tasks[0].indexOf("Dashboard Rank")], "High");
+  assert.equal(notionTaskRow[source.tasks[0].indexOf("Source Date")], "2026-06-03");
   assert.deepEqual(requests, [
     "https://api.notion.com/v1/blocks/daily-page/children?page_size=100",
     "https://api.notion.com/v1/pages/daily-page/markdown",

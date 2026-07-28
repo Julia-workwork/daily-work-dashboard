@@ -950,8 +950,13 @@ function reportItemsForMonth(data, monthKey) {
 
   const taskItems = data.tasks
     .filter((task) => task.sourceType !== "daily-work")
+    .filter((task) =>
+      isWorkflowMonthlyOngoingTask(task)
+        ? isMonthlyOngoingActiveInMonth(task, monthKey)
+        : taskMonthKey(task) === monthKey,
+    )
     .map((task) => {
-      const date = task.sourceDate || task.completedDate || task.dueDate;
+      const date = task.sourceDate || task.recordTime || task.completedDate || task.dueDate;
       return {
         date,
         week: reportWeekLabel(data, date),
@@ -960,8 +965,7 @@ function reportItemsForMonth(data, monthKey) {
         workstream: taskWorkstream(task),
         done: isDone(task),
       };
-    })
-    .filter((item) => dateMonth(item.date) === monthKey);
+    });
 
   return [...dailyItems, ...taskItems].filter((item) => item.text);
 }
@@ -1152,14 +1156,28 @@ function compareMonthlyOngoing(left, right) {
   );
 }
 
+function monthlyOngoingStartMonth(task) {
+  return dateMonth(task.sourceDate || task.recordTime || task.dueDate);
+}
+
+function monthlyOngoingEndMonth(task) {
+  if (!isDone(task)) return "";
+  return dateMonth(task.completedDate || task.recordTime || task.dueDate);
+}
+
+function isMonthlyOngoingActiveInMonth(task, monthKey) {
+  const startMonth = monthlyOngoingStartMonth(task);
+  const endMonth = monthlyOngoingEndMonth(task);
+  return Boolean(startMonth && startMonth <= monthKey && (!endMonth || monthKey <= endMonth));
+}
+
 function monthlyOngoingItems(data, monthKey) {
   return data.tasks
     .filter((task) => {
-      const date = task.sourceDate || task.completedDate || task.dueDate;
-      return isWorkflowMonthlyOngoingTask(task) && dateMonth(date) === monthKey;
+      return isWorkflowMonthlyOngoingTask(task) && isMonthlyOngoingActiveInMonth(task, monthKey);
     })
     .map((task) => {
-      const date = task.sourceDate || task.completedDate || task.dueDate;
+      const date = task.sourceDate || task.recordTime || task.dueDate;
       return {
         date,
         week: reportWeekLabel(data, date),
