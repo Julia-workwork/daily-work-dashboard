@@ -556,6 +556,7 @@ test("daily routine changes wait for an explicit save button before writing to N
   assert.match(bindBlock, /const saveButton = panel\.querySelector\("\[data-save-routine\]"\)/);
   assert.match(bindBlock, /saveButton\?\.addEventListener\("click",\s*\(\)\s*=>\s*persistRoutine\(\)\)/);
   assert.match(bindBlock, /Unsaved changes/);
+  assert.match(bindBlock, /state\.dailyRoutineDirtyDate = todayIso\(\)/);
   assert.match(changeBlock, /markUnsaved\(\)/);
   assert.doesNotMatch(changeBlock, /persistRoutine\(\)/);
 });
@@ -568,6 +569,10 @@ test("daily routine saves one Notion record per day for reporting", async () => 
   assert.match(source, /function findDailyRoutineTask\(data\)/);
   assert.match(source, /function parseDailyRoutineTask\(task\)/);
   assert.match(source, /function dailyRoutineStateForData\(data\)/);
+  assert.match(source, /dailyRoutineDirtyDate/);
+  assert.match(source, /const hasUnsavedChanges = state\.dailyRoutineDirtyDate === todayIso\(\)/);
+  assert.match(source, /if \(!existingTask \|\| hasUnsavedChanges\) return localRoutine/);
+  assert.match(source, /state\.dailyRoutineDirtyDate = ""/);
   assert.match(source, /function dailyRoutineTaskPayload\(routine\)/);
   assert.match(source, /function saveDailyRoutineToNotion\(data,\s*routine\)/);
   assert.match(source, /await saveTaskEdit\(task\)/);

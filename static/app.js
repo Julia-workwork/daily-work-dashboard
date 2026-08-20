@@ -2,6 +2,7 @@ const state = {
   data: null,
   activeView: "overview",
   localTasks: [],
+  dailyRoutineDirtyDate: "",
   selectedWeek: "",
   visibleTasks: [],
   filters: {
@@ -405,27 +406,14 @@ function parseDailyRoutineTask(task) {
   };
 }
 
-function hasRoutineInput(routine) {
-  return Boolean(
-    routine.emailsDone ||
-      routine.groupsDone ||
-      routine.userIssuesDone ||
-      routine.userRequestsDone ||
-      routine.postsDone ||
-      routine.emailsCount ||
-      routine.userIssuesCount ||
-      routine.userRequestsCount ||
-      routine.postsCount ||
-      routine.sourceId,
-  );
-}
-
 function dailyRoutineStateForData(data) {
   const localRoutine = loadDailyRoutineState();
   const existingTask = data ? findDailyRoutineTask(data) : null;
-  if (!existingTask || hasRoutineInput(localRoutine)) return localRoutine;
+  const hasUnsavedChanges = state.dailyRoutineDirtyDate === todayIso();
+  if (!existingTask || hasUnsavedChanges) return localRoutine;
   const parsed = parseDailyRoutineTask(existingTask);
   saveDailyRoutineState(parsed);
+  state.dailyRoutineDirtyDate = "";
   return parsed;
 }
 
@@ -2050,6 +2038,7 @@ function bindDailyRoutine(data) {
     item?.classList.toggle("is-done", Boolean(checkbox?.checked));
   };
   const markUnsaved = () => {
+    state.dailyRoutineDirtyDate = todayIso();
     if (status) status.textContent = "Unsaved changes. Click Save Daily Routine.";
   };
   const persistRoutine = async () => {
@@ -2061,6 +2050,7 @@ function bindDailyRoutine(data) {
     });
     try {
       await saveDailyRoutineToNotion(data, routine);
+      state.dailyRoutineDirtyDate = "";
       if (status) status.textContent = "Saved to Notion. Included in reports.";
     } catch (error) {
       if (status) status.textContent = error instanceof Error ? error.message : "Could not save routine to Notion.";
