@@ -1162,7 +1162,10 @@ function monthlyOngoingStartMonth(task) {
 
 function monthlyOngoingEndMonth(task) {
   if (!isDone(task)) return "";
-  return dateMonth(task.completedDate || task.recordTime || task.dueDate);
+  const startMonth = monthlyOngoingStartMonth(task);
+  const terminalMonths = [dateMonth(task.dueDate), dateMonth(task.completedDate)].filter(Boolean).sort();
+  const terminalMonth = terminalMonths[0] || startMonth;
+  return terminalMonth < startMonth ? startMonth : terminalMonth;
 }
 
 function isMonthlyOngoingActiveInMonth(task, monthKey) {
