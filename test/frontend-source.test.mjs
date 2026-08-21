@@ -617,6 +617,30 @@ test("daily routine saves one Notion record per day for reporting", async () => 
   assert.match(source, /published \$\{postCount\} posts/);
 });
 
+test("monthly recap summarizes saved daily routine fixed checks", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+  const monthlyRecapBlock = source.match(/function monthlyRecap\(weeks\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const monthlyRecapCardBlock = source.match(/function monthlyRecapCard\(monthly\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /function dailyRoutineMetrics\(text\)/);
+  assert.match(source, /function isDailyRoutineReportItem\(item\)/);
+  assert.match(source, /function monthlyFixedChecks\(weeks\)/);
+  assert.match(source, /Handled\\s\+\(\\d\+\)\\s\+emails/i);
+  assert.match(source, /checked\\s\+\(\\d\+\)\\s\+groups/i);
+  assert.match(source, /handled\\s\+\(\\d\+\)\\s\+user issues/i);
+  assert.match(source, /handled\\s\+\(\\d\+\)\\s\+user requests/i);
+  assert.match(source, /published\\s\+\(\\d\+\)\\s\+posts/i);
+  assert.match(monthlyRecapBlock, /fixedChecks:\s*monthlyFixedChecks\(weeks\)/);
+  assert.match(source, /function monthlyFixedChecksPanel\(fixedChecks/);
+  assert.match(monthlyRecapCardBlock, /monthlyFixedChecksPanel\(recap\.fixedChecks\)/);
+  for (const label of ["Fixed Checks", "Routine Days", "Emails", "Group Checks", "User Issues", "User Requests", "Posts"]) {
+    assert.match(source, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(styles, /\.fixed-check-grid/);
+  assert.match(styles, /\.fixed-check-item/);
+});
+
 test("daily routine creates a new record when the existing Notion row is archived", async () => {
   const source = await read("../static/app.js");
 
