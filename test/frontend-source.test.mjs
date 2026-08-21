@@ -664,6 +664,8 @@ test("task board supports synced this month ongoing work separately from weekly 
   assert.match(source, /\[JL\] Monthly Ongoing - /);
   assert.match(source, /This Month Ongoing/);
   assert.match(source, /Current Progress/);
+  assert.match(source, /const monthKey = selectedMonthKey\(data\)/);
+  assert.match(source, /monthFilterSelect\(data\)/);
   assert.match(renderTasksBlock, /taskBoardMonthlyOngoingPanel\(data\)/);
   assert.match(renderTasksBlock, /bindMonthlyOngoingCreator\(data\)/);
   assert.match(styles, /\.task-monthly-ongoing-panel/);

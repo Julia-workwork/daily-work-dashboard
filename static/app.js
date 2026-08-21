@@ -2155,14 +2155,17 @@ function taskBoardOngoingPanel(data, taskPool) {
 }
 
 function taskBoardMonthlyOngoingPanel(data) {
-  const monthKey = todayIso().slice(0, 7);
+  const monthKey = selectedMonthKey(data);
   const ongoingItems = monthlyOngoingItems(data, monthKey);
   return `
     <section class="task-ongoing-panel task-monthly-ongoing-panel" aria-label="This Month Ongoing">
       <div class="routine-heading">
-        <p>This Month Ongoing</p>
+        <p>Monthly Ongoing</p>
         <h2>${escapeHtml(monthTitle(monthKey))}</h2>
-        <button class="text-action primary-action" type="button" data-open-monthly-ongoing>Add Monthly Ongoing</button>
+        <div class="ongoing-heading-actions">
+          ${monthFilterSelect(data)}
+          <button class="text-action primary-action" type="button" data-open-monthly-ongoing>Add Monthly Ongoing</button>
+        </div>
       </div>
       <div class="task-ongoing-body">
         ${monthlyOngoingList(ongoingItems)}
@@ -2216,7 +2219,7 @@ function bindMonthlyOngoingCreator(data) {
   const dialog = elements.tasks.querySelector("#task-dialog");
   const form = elements.tasks.querySelector("#task-form");
   const status = elements.tasks.querySelector("[data-monthly-ongoing-save-status]");
-  const monthKey = todayIso().slice(0, 7);
+  const monthKey = selectedMonthKey(data);
   button?.addEventListener("click", () => {
     if (!dialog || !form) return;
     prefillMonthlyOngoingTaskForm(form, monthKey);

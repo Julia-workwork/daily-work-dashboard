@@ -1179,6 +1179,26 @@ select {
   letter-spacing: -0.02em;
 }
 
+.ongoing-heading-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ongoing-heading-actions label {
+  display: grid;
+  gap: 6px;
+  color: #687183;
+  font: 700 11px/1 var(--system-font);
+}
+
+.ongoing-heading-actions select {
+  min-width: 0;
+  width: 100%;
+  max-width: 220px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
 .routine-save-button {
   width: fit-content;
   margin-top: 8px;
