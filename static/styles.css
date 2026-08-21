@@ -1981,30 +1981,96 @@ select {
   letter-spacing: -0.012em;
 }
 
+.fixed-checks-panel {
+  margin-top: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(0, 113, 227, 0.12), transparent 28%),
+    radial-gradient(circle at 86% 8%, rgba(231, 255, 31, 0.2), transparent 26%),
+    rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.07);
+  padding: 18px;
+}
+
+.fixed-checks-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.fixed-checks-header p {
+  color: #687183;
+  font: 800 12px/1 var(--system-font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fixed-checks-header h3 {
+  margin: 0;
+  color: #050505;
+  font: 780 24px/1.05 var(--display-font);
+  letter-spacing: -0.02em;
+}
+
 .fixed-check-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(110px, 1fr));
   gap: 10px;
-  margin-top: 12px;
 }
 
 .fixed-check-item {
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  --fixed-accent: #64748b;
+  --fixed-bg: rgba(248, 250, 252, 0.86);
+  border: 1px solid color-mix(in srgb, var(--fixed-accent) 24%, transparent);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.64);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--fixed-accent) 14%, white), var(--fixed-bg));
   padding: 13px;
+}
+
+.fixed-check-days {
+  --fixed-accent: #64748b;
+  --fixed-bg: rgba(248, 250, 252, 0.92);
+}
+
+.fixed-check-emails {
+  --fixed-accent: #0071e3;
+  --fixed-bg: rgba(231, 243, 255, 0.92);
+}
+
+.fixed-check-groups {
+  --fixed-accent: #00a884;
+  --fixed-bg: rgba(225, 248, 241, 0.92);
+}
+
+.fixed-check-issues {
+  --fixed-accent: #ff8a00;
+  --fixed-bg: rgba(255, 243, 226, 0.94);
+}
+
+.fixed-check-requests {
+  --fixed-accent: #7c3aed;
+  --fixed-bg: rgba(243, 232, 255, 0.92);
+}
+
+.fixed-check-posts {
+  --fixed-accent: #e11d48;
+  --fixed-bg: rgba(255, 228, 235, 0.92);
 }
 
 .fixed-check-item span {
   display: block;
-  color: #687183;
+  color: color-mix(in srgb, var(--fixed-accent) 68%, #1d1d1f);
   font: 700 12px/1.2 var(--system-font);
 }
 
 .fixed-check-item strong {
   display: block;
   margin-top: 8px;
-  color: #050505;
+  color: color-mix(in srgb, var(--fixed-accent) 72%, #050505);
   font: 800 30px/0.95 var(--display-font);
   letter-spacing: -0.025em;
 }

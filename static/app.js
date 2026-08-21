@@ -2546,6 +2546,7 @@ function monthlyRecapCard(monthly) {
         </div>
         <strong><span>Workload Estimate</span>${recap.total}</strong>
       </header>
+      ${monthlyFixedChecksPanel(recap.fixedChecks)}
       <div class="monthly-recap-metrics">
         <section class="monthly-recap-item">
           <h3>Records</h3>
@@ -2563,7 +2564,6 @@ function monthlyRecapCard(monthly) {
           <p>Projects or workstreams repeatedly moved during the month.</p>
         </section>
       </div>
-      ${monthlyFixedChecksPanel(recap.fixedChecks)}
       <p class="weekly-report-summary">This month includes ${recap.weekCount} tracked week${recap.weekCount === 1 ? "" : "s"}. The recap is organized for reporting: records, quantified output, ongoing projects, and a leadership-ready summary.</p>
       <section class="monthly-summary-panel">
         <h3>Leadership Summary</h3>
@@ -2583,22 +2583,25 @@ function monthlyRecapCard(monthly) {
 
 function monthlyFixedChecksPanel(fixedChecks = {}) {
   const metrics = [
-    ["Routine Days", fixedChecks.days || 0, "Saved Daily Routine records"],
-    ["Emails", fixedChecks.emails || 0, "Handled emails"],
-    ["Group Checks", fixedChecks.groupChecks || 0, "Checked groups"],
-    ["User Issues", fixedChecks.userIssues || 0, "Handled user issues"],
-    ["User Requests", fixedChecks.userRequests || 0, "Handled user requests"],
-    ["Posts", fixedChecks.posts || 0, "Published posts"],
+    ["Routine Days", fixedChecks.days || 0, "Saved Daily Routine records", "days"],
+    ["Emails", fixedChecks.emails || 0, "Handled emails", "emails"],
+    ["Group Checks", fixedChecks.groupChecks || 0, "Checked groups", "groups"],
+    ["User Issues", fixedChecks.userIssues || 0, "Handled user issues", "issues"],
+    ["User Requests", fixedChecks.userRequests || 0, "Handled user requests", "requests"],
+    ["Posts", fixedChecks.posts || 0, "Published posts", "posts"],
   ];
 
   return `
-    <section class="monthly-summary-panel fixed-checks-panel">
-      <h3>Fixed Checks</h3>
+    <section class="fixed-checks-panel">
+      <div class="fixed-checks-header">
+        <p>Fixed Checks</p>
+        <h3>Monthly routine output</h3>
+      </div>
       <div class="fixed-check-grid">
         ${metrics
           .map(
-            ([label, value, detail]) => `
-              <article class="fixed-check-item">
+            ([label, value, detail, tone]) => `
+              <article class="fixed-check-item fixed-check-${tone}">
                 <span>${escapeHtml(label)}</span>
                 <strong>${escapeHtml(value)}</strong>
                 <p>${escapeHtml(detail)}</p>
