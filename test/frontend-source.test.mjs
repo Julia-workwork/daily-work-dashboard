@@ -370,6 +370,33 @@ test("tasks page supports week filtering and cleaned tag display", async () => {
   assert.match(source, /preserveWorkstreamTag/);
 });
 
+test("tasks page supports an independent custom date period filter", async () => {
+  const source = await read("../static/app.js");
+  const styles = await read("../static/styles.css");
+  const filteredTasksBlock = source.match(/function filteredTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+  const renderTasksBlock = source.match(/function renderTasks\(data\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /dateStart:\s*""/);
+  assert.match(source, /dateEnd:\s*""/);
+  assert.match(source, /function taskPeriodDate\(task\)/);
+  assert.match(source, /function customPeriodActive\(\)/);
+  assert.match(source, /function taskMatchesCustomPeriod\(task\)/);
+  assert.match(source, /function dateRangeFilter\(\)/);
+  assert.match(source, /data-date-filter="dateStart"/);
+  assert.match(source, /data-date-filter="dateEnd"/);
+  assert.match(filteredTasksBlock, /const useCustomPeriod = customPeriodActive\(\)/);
+  assert.match(filteredTasksBlock, /useCustomPeriod \|\| state\.filters\.month/);
+  assert.match(filteredTasksBlock, /useCustomPeriod \|\| state\.filters\.week/);
+  assert.match(filteredTasksBlock, /taskMatchesCustomPeriod\(task\)/);
+  assert.match(source, /function taskPoolForSelectedPeriod\(data\)/);
+  assert.match(source, /if \(customPeriodActive\(\)\) return allTasks\(data\)\.filter\(taskMatchesCustomPeriod\)/);
+  assert.match(renderTasksBlock, /dateRangeFilter\(\)/);
+  assert.match(renderTasksBlock, /querySelectorAll\("\[data-date-filter\]"\)/);
+  assert.match(renderTasksBlock, /state\.filters\[input\.dataset\.dateFilter\] = cleanInputDate\(input\.value\)/);
+  assert.match(renderTasksBlock, /state\.filters\.week = "All"/);
+  assert.match(styles, /\.date-filter input/);
+});
+
 test("tasks page supports keyword search across task details", async () => {
   const source = await read("../static/app.js");
   const styles = await read("../static/styles.css");

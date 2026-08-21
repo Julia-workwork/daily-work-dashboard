@@ -13,6 +13,8 @@ const state = {
     category: "All",
     workstream: "All",
     search: "",
+    dateStart: "",
+    dateEnd: "",
   },
 };
 
@@ -1519,6 +1521,34 @@ function filterWeekSelect(tasks) {
   return filterSelect("Report Week", "week", weeks);
 }
 
+function taskPeriodDate(task) {
+  return cleanInputDate(task.sourceDate || task.completedDate || task.dueDate || task.recordTime);
+}
+
+function customPeriodActive() {
+  return Boolean(state.filters.dateStart || state.filters.dateEnd);
+}
+
+function taskMatchesCustomPeriod(task) {
+  if (!customPeriodActive()) return true;
+  const date = taskPeriodDate(task);
+  if (!date) return false;
+  return (!state.filters.dateStart || date >= state.filters.dateStart) && (!state.filters.dateEnd || date <= state.filters.dateEnd);
+}
+
+function dateRangeFilter() {
+  return `
+    <label class="date-filter">
+      <span>From Date</span>
+      <input data-date-filter="dateStart" type="date" value="${escapeHtml(state.filters.dateStart)}" />
+    </label>
+    <label class="date-filter">
+      <span>To Date</span>
+      <input data-date-filter="dateEnd" type="date" value="${escapeHtml(state.filters.dateEnd)}" />
+    </label>
+  `;
+}
+
 function taskSearchText(task) {
   return [
     task.taskName,
@@ -1546,13 +1576,15 @@ function taskMatchesSearch(task) {
 }
 
 function filteredTasks(data) {
+  const useCustomPeriod = customPeriodActive();
   return allTasks(data).filter((task) => {
     const taskWeek = canonicalWeekLabel(task.dueDate || task.sourceDate || task.completedDate);
     const workstream = taskWorkstream(task) || "Unassigned";
     const taskMonth = taskMonthKey(task);
     return (
-      (state.filters.month === "All" || taskMonth === selectedMonthKey(data)) &&
-      (state.filters.week === "All" || taskWeek === state.filters.week) &&
+      (useCustomPeriod || state.filters.month === "All" || taskMonth === selectedMonthKey(data)) &&
+      (useCustomPeriod || state.filters.week === "All" || taskWeek === state.filters.week) &&
+      taskMatchesCustomPeriod(task) &&
       (state.filters.priority === "All" || task.priority === state.filters.priority) &&
       (state.filters.status === "All" || task.status === state.filters.status) &&
       (state.filters.category === "All" || task.category === state.filters.category) &&
@@ -1562,7 +1594,8 @@ function filteredTasks(data) {
   });
 }
 
-function taskPoolForSelectedMonth(data) {
+function taskPoolForSelectedPeriod(data) {
+  if (customPeriodActive()) return allTasks(data).filter(taskMatchesCustomPeriod);
   return allTasks(data).filter((task) => taskMonthKey(task) === selectedMonthKey(data));
 }
 
@@ -2273,7 +2306,7 @@ function bindMonthlyOngoingRanks(data) {
 }
 
 function renderTaskResults(data) {
-  const taskPool = taskPoolForSelectedMonth(data);
+  const taskPool = taskPoolForSelectedPeriod(data);
   const tasks = filteredTasks(data);
   state.visibleTasks = tasks;
   const results = elements.tasks.querySelector("[data-task-results]");
@@ -2284,7 +2317,7 @@ function renderTaskResults(data) {
 }
 
 function renderTasks(data) {
-  const taskPool = taskPoolForSelectedMonth(data);
+  const taskPool = taskPoolForSelectedPeriod(data);
   const tasks = filteredTasks(data);
   state.visibleTasks = tasks;
   elements.tasks.innerHTML = `
@@ -2300,6 +2333,7 @@ function renderTasks(data) {
         </label>
         ${monthFilterSelect(data)}
         ${filterWeekSelect(taskPool)}
+        ${dateRangeFilter()}
         ${filterSelect("Priority", "priority", unique(taskPool.map((task) => task.priority)))}
         ${filterSelect("Status", "status", unique(taskPool.map((task) => task.status)))}
         ${filterSelect("Category", "category", unique(taskPool.map((task) => task.category)))}
@@ -2323,6 +2357,14 @@ function renderTasks(data) {
         state.selectedWeek = "";
         state.filters.week = "All";
       }
+      renderTasks(data);
+    });
+  });
+  elements.tasks.querySelectorAll("[data-date-filter]").forEach((input) => {
+    input.addEventListener("change", () => {
+      state.filters[input.dataset.dateFilter] = cleanInputDate(input.value);
+      state.selectedWeek = "";
+      state.filters.week = "All";
       renderTasks(data);
     });
   });
