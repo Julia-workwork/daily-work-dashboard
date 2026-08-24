@@ -617,6 +617,21 @@ test("daily routine saves one Notion record per day for reporting", async () => 
   assert.match(source, /published \$\{postCount\} posts/);
 });
 
+test("saved daily routine records auto-complete after their day ends", async () => {
+  const source = await read("../static/app.js");
+  const loadBlock = source.match(/async function loadWorkflow\(options = \{\}\)\s*\{[\s\S]+?\n\}/)?.[0] || "";
+
+  assert.match(source, /function isDailyRoutineTask\(task\)/);
+  assert.match(source, /function dailyRoutineTaskDate\(task\)/);
+  assert.match(source, /function shouldAutoCompleteDailyRoutine\(task\)/);
+  assert.match(source, /date && date < todayIso\(\) && task\.status !== "Done"/);
+  assert.match(source, /function autoCompletePastDailyRoutines\(data\)/);
+  assert.match(source, /const updatedTask = \{ \.\.\.task, status: "Done", completedDate \}/);
+  assert.match(source, /await saveTaskEdit\(updatedTask\)/);
+  assert.match(source, /replaceTaskInState\(data,\s*savedTask,\s*taskKey\(task\)\)/);
+  assert.match(loadBlock, /autoCompletePastDailyRoutines\(payload\)\.catch\(\(\) => \{\}\)/);
+});
+
 test("monthly recap summarizes saved daily routine fixed checks", async () => {
   const source = await read("../static/app.js");
   const styles = await read("../static/styles.css");

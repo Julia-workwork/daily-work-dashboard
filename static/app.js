@@ -380,6 +380,16 @@ function dailyRoutineTaskName() {
   return `[JL] Daily Routine - ${todayIso()}`;
 }
 
+function isDailyRoutineTask(task) {
+  const text = normalizeEscapedText([task?.taskName, task?.workLog, task?.nextAction].filter(Boolean).join(" "));
+  return /\[JL\]\s*Daily Routine|Daily Routine\s*-/i.test(text);
+}
+
+function dailyRoutineTaskDate(task) {
+  const text = normalizeEscapedText(task?.taskName || "");
+  return cleanInputDate(text.match(/Daily Routine\s*-\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})/i)?.[1] || task?.sourceDate || task?.dueDate || task?.recordTime);
+}
+
 function findDailyRoutineTask(data) {
   const name = dailyRoutineTaskName();
   return allTasks(data).find((task) => normalizeEscapedText(task.taskName) === name);
@@ -498,6 +508,30 @@ async function saveDailyRoutineToNotion(data, routine) {
     notionUrl: savedTask.notionUrl,
   });
   return savedTask;
+}
+
+function shouldAutoCompleteDailyRoutine(task) {
+  const date = dailyRoutineTaskDate(task);
+  return Boolean(isDailyRoutineTask(task) && canPatchTask(task) && date && date < todayIso() && task.status !== "Done");
+}
+
+async function autoCompletePastDailyRoutines(data) {
+  const tasks = (data?.tasks || []).filter(shouldAutoCompleteDailyRoutine);
+  if (!tasks.length) return;
+
+  const results = await Promise.allSettled(
+    tasks.map(async (task) => {
+      const completedDate = dailyRoutineTaskDate(task) || task.completedDate || todayIso();
+      const updatedTask = { ...task, status: "Done", completedDate };
+      const result = await saveTaskEdit(updatedTask);
+      const savedTask = { ...updatedTask, ...(result.task || {}) };
+      replaceTaskInState(data, savedTask, taskKey(task));
+    }),
+  );
+
+  if (results.some((result) => result.status === "fulfilled")) {
+    render();
+  }
 }
 
 function taskStatusChips(task) {
@@ -2875,6 +2909,7 @@ async function loadWorkflow(options = {}) {
     showState(payload.syncWarning ? `Showing recent records. Latest sync failed: ${payload.syncWarning}` : syncLabel, payload.syncWarning ? "warning" : "success");
     setSyncLine(syncLabel, payload.syncWarning ? "warning" : "success");
     render();
+    autoCompletePastDailyRoutines(payload).catch(() => {});
     if (payload.cache?.status === "stale-refreshing" && !options.forceRefresh) {
       scheduleFreshWorkflowAfterStaleCache();
     }
