@@ -544,7 +544,9 @@ function delay(ms) {
 async function autoCompletePastDailyRoutines(data) {
   const autoState = loadDailyRoutineAutoCompleteState();
   const seenKeys = new Set(autoState.keys);
-  const tasks = (data?.tasks || []).filter((task) => shouldAutoCompleteDailyRoutine(task) && !seenKeys.has(autoCompleteTaskKey(task)));
+  const tasks = (data?.tasks || [])
+    .filter((task) => shouldAutoCompleteDailyRoutine(task) && !seenKeys.has(autoCompleteTaskKey(task)))
+    .slice(0, 1);
   if (!tasks.length) return;
 
   let changed = false;
@@ -571,7 +573,7 @@ async function autoCompletePastDailyRoutines(data) {
 
 function scheduleDailyRoutineAutoComplete(payload) {
   if (payload.syncWarning || !["synced", "refreshed"].includes(payload.cache?.status)) return;
-  window.setTimeout(() => autoCompletePastDailyRoutines(payload).catch(() => {}), 1200);
+  window.setTimeout(() => autoCompletePastDailyRoutines(payload).catch(() => {}), 3000);
 }
 
 function taskStatusChips(task) {
@@ -2886,8 +2888,8 @@ function showWorkflowSnapshotWhileSyncing() {
 
 function scheduleFreshWorkflowAfterStaleCache() {
   window.setTimeout(() => {
-    loadWorkflow({ forceRefresh: true, silent: true }).catch(() => {});
-  }, 1500);
+    loadWorkflow({ silent: true }).catch(() => {});
+  }, 30000);
 }
 
 function setDashboardLocked(locked) {

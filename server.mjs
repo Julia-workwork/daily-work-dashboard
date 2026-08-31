@@ -129,9 +129,14 @@ export function createAppServer(options = {}) {
     options.notionTasksDataSourceId || process.env.NOTION_TASKS_DATA_SOURCE_ID || DEFAULT_NOTION_TASKS_DATA_SOURCE_ID;
   const dashboardPassword = clean(options.dashboardPassword ?? process.env.DASHBOARD_PASSWORD ?? "");
   const today = options.today;
-  const workflowCacheTtlMs = Number(options.workflowCacheTtlMs ?? process.env.WORKFLOW_CACHE_TTL_MS ?? 60_000);
+  const workflowCacheTtlMs = Number(options.workflowCacheTtlMs ?? process.env.WORKFLOW_CACHE_TTL_MS ?? 300_000);
+  const workflowRateLimitCooldownMs = Number(
+    options.workflowRateLimitCooldownMs ?? process.env.WORKFLOW_RATE_LIMIT_COOLDOWN_MS ?? 180_000,
+  );
   let workflowCache = null;
   let workflowLoadPromise = null;
+  let workflowCooldownUntil = 0;
+  let workflowCooldownMessage = "";
 
   function updateCachedTask(task, metadata = {}) {
     if (!workflowCache?.payload || !Array.isArray(workflowCache.payload.tasks)) return;
@@ -195,11 +200,18 @@ export function createAppServer(options = {}) {
           ...(rawTabs.source ? { source: rawTabs.source } : workflowSource({ spreadsheetId })),
         });
         workflowCache = { payload, cachedAt: Date.now() };
+        workflowCooldownUntil = 0;
+        workflowCooldownMessage = "";
         return cachedWorkflowPayload(forceRefresh ? "refreshed" : "synced");
       } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to sync latest records.";
+        if (/rate limit|rate_limited|limited/i.test(message)) {
+          workflowCooldownUntil = Date.now() + workflowRateLimitCooldownMs;
+          workflowCooldownMessage = message;
+        }
         if (workflowCache) {
           return cachedWorkflowPayload("stale", {
-            syncWarning: error instanceof Error ? error.message : "Unable to sync latest records.",
+            syncWarning: message,
           });
         }
         throw error;
@@ -213,6 +225,12 @@ export function createAppServer(options = {}) {
 
   async function loadWorkflowPayload({ forceRefresh = false } = {}) {
     const now = Date.now();
+    if (workflowCache && workflowCooldownUntil > now) {
+      return cachedWorkflowPayload("stale", {
+        syncWarning: workflowCooldownMessage || "Notion is cooling down after a rate limit. Please try again later.",
+      });
+    }
+
     if (!forceRefresh && workflowCache && now - workflowCache.cachedAt < workflowCacheTtlMs) {
       return cachedWorkflowPayload("cached");
     }

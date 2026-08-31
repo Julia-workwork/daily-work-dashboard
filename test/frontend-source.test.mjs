@@ -630,9 +630,10 @@ test("saved daily routine records auto-complete after their day ends", async () 
   assert.match(source, /const updatedTask = \{ \.\.\.task, status: "Done", completedDate \}/);
   assert.match(source, /await saveTaskEdit\(updatedTask\)/);
   assert.match(source, /replaceTaskInState\(data,\s*savedTask,\s*taskKey\(task\)\)/);
+  assert.match(source, /\.slice\(0,\s*1\)/);
   assert.match(source, /function scheduleDailyRoutineAutoComplete\(payload\)/);
   assert.match(source, /!\["synced", "refreshed"\]\.includes\(payload\.cache\?\.status\)/);
-  assert.match(source, /window\.setTimeout\(\(\) => autoCompletePastDailyRoutines\(payload\)\.catch\(\(\) => \{\}\), 1200\)/);
+  assert.match(source, /window\.setTimeout\(\(\) => autoCompletePastDailyRoutines\(payload\)\.catch\(\(\) => \{\}\), 3000\)/);
   assert.match(loadBlock, /scheduleDailyRoutineAutoComplete\(payload\)/);
 });
 
@@ -822,7 +823,7 @@ test("frontend refreshes again after a stale cache response", async () => {
   const source = await read("../static/app.js");
 
   assert.match(source, /function scheduleFreshWorkflowAfterStaleCache\(\)/);
-  assert.match(source, /loadWorkflow\(\{ forceRefresh: true, silent: true \}\)/);
+  assert.match(source, /loadWorkflow\(\{ silent: true \}\)/);
   assert.match(source, /payload\.cache\?\.status === "stale-refreshing"/);
 });
 

@@ -201,6 +201,42 @@ test("GET /api/workflow returns expired cache immediately while refreshing in ba
   releaseSecondSync();
 });
 
+test("GET /api/workflow cools down after Notion rate limits a refresh", async () => {
+  let calls = 0;
+  const server = createAppServer({
+    notionToken: "secret-token",
+    notionDailyWorkPageId: "daily-page",
+    notionTasksDataSourceId: "tasks-source",
+    workflowCacheTtlMs: 0,
+    workflowRateLimitCooldownMs: 60_000,
+    fetchNotionSource: async () => {
+      calls += 1;
+      if (calls > 1) throw new Error("You have been rate limited. Please try again later.");
+      return {
+        dailyExtracts: [["Date"], ["2026-06-22"]],
+        tasks: [["Task Name", "Priority", "Status"], ["From Notion", "P1", "In Progress"]],
+        weeklyReview: [["Week Range", "Draft Weekly Report"], ["2026.06.22-2026.06.27", "Notion weekly report"]],
+        categorySummary: [["Category", "Open Tasks"], ["Content", "1"]],
+        settings: [["Type", "Value"], ["Priority", "P1"]],
+        source: { kind: "notion", month: "2026-06" },
+      };
+    },
+    today: "2026-06-22",
+  });
+
+  const first = await request(server, "/api/workflow");
+  const second = await request(server, "/api/workflow?refresh=1");
+  const third = await request(server, "/api/workflow?refresh=1");
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(second.json().cache.status, "stale");
+  assert.match(second.json().syncWarning, /rate limited/i);
+  assert.equal(third.status, 200);
+  assert.equal(third.json().cache.status, "stale");
+  assert.equal(calls, 2);
+});
+
 test("GET /api/workflow returns JSON error on fetch failure", async () => {
   const server = createAppServer({
     fetchTabs: async () => {
