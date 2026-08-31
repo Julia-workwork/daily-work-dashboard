@@ -626,10 +626,14 @@ test("saved daily routine records auto-complete after their day ends", async () 
   assert.match(source, /function shouldAutoCompleteDailyRoutine\(task\)/);
   assert.match(source, /date && date < todayIso\(\) && task\.status !== "Done"/);
   assert.match(source, /function autoCompletePastDailyRoutines\(data\)/);
+  assert.match(source, /DAILY_ROUTINE_AUTOCOMPLETE_STORAGE_KEY/);
   assert.match(source, /const updatedTask = \{ \.\.\.task, status: "Done", completedDate \}/);
   assert.match(source, /await saveTaskEdit\(updatedTask\)/);
   assert.match(source, /replaceTaskInState\(data,\s*savedTask,\s*taskKey\(task\)\)/);
-  assert.match(loadBlock, /autoCompletePastDailyRoutines\(payload\)\.catch\(\(\) => \{\}\)/);
+  assert.match(source, /function scheduleDailyRoutineAutoComplete\(payload\)/);
+  assert.match(source, /!\["synced", "refreshed"\]\.includes\(payload\.cache\?\.status\)/);
+  assert.match(source, /window\.setTimeout\(\(\) => autoCompletePastDailyRoutines\(payload\)\.catch\(\(\) => \{\}\), 1200\)/);
+  assert.match(loadBlock, /scheduleDailyRoutineAutoComplete\(payload\)/);
 });
 
 test("monthly recap summarizes saved daily routine fixed checks", async () => {

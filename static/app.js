@@ -45,6 +45,7 @@ const HIDDEN_SOURCE_TASK_KEYS = "daily-work-hidden-source-task-keys";
 const DAILY_ROUTINE_STORAGE_KEY = "daily-work-daily-routine";
 const WORKFLOW_SNAPSHOT_STORAGE_KEY = "daily-work-dashboard-snapshot";
 const MONTHLY_ONGOING_RANK_STORAGE_KEY = "daily-work-monthly-ongoing-ranks";
+const DAILY_ROUTINE_AUTOCOMPLETE_STORAGE_KEY = "daily-work-daily-routine-autocomplete";
 const DEFAULT_DAILY_ROUTINE = {
   emailsDone: false,
   emailsCount: "",
@@ -515,23 +516,62 @@ function shouldAutoCompleteDailyRoutine(task) {
   return Boolean(isDailyRoutineTask(task) && canPatchTask(task) && date && date < todayIso() && task.status !== "Done");
 }
 
+function autoCompleteTaskKey(task) {
+  return task.sourceId || taskKey(task);
+}
+
+function loadDailyRoutineAutoCompleteState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DAILY_ROUTINE_AUTOCOMPLETE_STORAGE_KEY) || "{}");
+    return parsed.date === todayIso() && Array.isArray(parsed.keys) ? parsed : { date: todayIso(), keys: [] };
+  } catch {
+    return { date: todayIso(), keys: [] };
+  }
+}
+
+function saveDailyRoutineAutoCompleteState(autoState) {
+  try {
+    localStorage.setItem(DAILY_ROUTINE_AUTOCOMPLETE_STORAGE_KEY, JSON.stringify(autoState));
+  } catch {
+    // Local storage is only used to prevent repeated background writes in one browser.
+  }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 async function autoCompletePastDailyRoutines(data) {
-  const tasks = (data?.tasks || []).filter(shouldAutoCompleteDailyRoutine);
+  const autoState = loadDailyRoutineAutoCompleteState();
+  const seenKeys = new Set(autoState.keys);
+  const tasks = (data?.tasks || []).filter((task) => shouldAutoCompleteDailyRoutine(task) && !seenKeys.has(autoCompleteTaskKey(task)));
   if (!tasks.length) return;
 
-  const results = await Promise.allSettled(
-    tasks.map(async (task) => {
-      const completedDate = dailyRoutineTaskDate(task) || task.completedDate || todayIso();
-      const updatedTask = { ...task, status: "Done", completedDate };
+  let changed = false;
+  for (const task of tasks) {
+    const completedDate = dailyRoutineTaskDate(task) || task.completedDate || todayIso();
+    const updatedTask = { ...task, status: "Done", completedDate };
+    try {
       const result = await saveTaskEdit(updatedTask);
       const savedTask = { ...updatedTask, ...(result.task || {}) };
       replaceTaskInState(data, savedTask, taskKey(task));
-    }),
-  );
+      seenKeys.add(autoCompleteTaskKey(task));
+      saveDailyRoutineAutoCompleteState({ date: todayIso(), keys: [...seenKeys] });
+      changed = true;
+      await delay(450);
+    } catch {
+      break;
+    }
+  }
 
-  if (results.some((result) => result.status === "fulfilled")) {
+  if (changed) {
     render();
   }
+}
+
+function scheduleDailyRoutineAutoComplete(payload) {
+  if (payload.syncWarning || !["synced", "refreshed"].includes(payload.cache?.status)) return;
+  window.setTimeout(() => autoCompletePastDailyRoutines(payload).catch(() => {}), 1200);
 }
 
 function taskStatusChips(task) {
@@ -2909,7 +2949,7 @@ async function loadWorkflow(options = {}) {
     showState(payload.syncWarning ? `Showing recent records. Latest sync failed: ${payload.syncWarning}` : syncLabel, payload.syncWarning ? "warning" : "success");
     setSyncLine(syncLabel, payload.syncWarning ? "warning" : "success");
     render();
-    autoCompletePastDailyRoutines(payload).catch(() => {});
+    scheduleDailyRoutineAutoComplete(payload);
     if (payload.cache?.status === "stale-refreshing" && !options.forceRefresh) {
       scheduleFreshWorkflowAfterStaleCache();
     }
