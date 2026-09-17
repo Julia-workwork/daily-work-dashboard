@@ -1364,9 +1364,6 @@ function actionHero() {
 function taskRow(task, index) {
   const taskTitle = cleanTaskText(task.taskName || "Untitled task") || "Untitled task";
   const taskDetail = cleanTaskText(task.nextAction || task.category || "Confirm next action") || "Confirm next action";
-  const reviewAction = isReviewTask(task)
-    ? `<button class="text-action review-done-action" type="button" data-complete-review="${taskKey(task)}">Review Done</button>`
-    : "";
   return `
     <article class="focus-row">
       <span class="row-index">${String(index + 1).padStart(2, "0")}</span>
@@ -1376,7 +1373,7 @@ function taskRow(task, index) {
       </div>
       <div class="focus-actions">
         <div class="focus-stamps">${taskStatusChips(task)}</div>
-        ${reviewAction}
+        <button class="text-action review-done-action" type="button" data-complete-review="${taskKey(task)}">Review Done</button>
         ${editTaskButton(task, "focus-edit-action")}
       </div>
     </article>
@@ -2065,6 +2062,13 @@ function bindReviewDoneButtons(data) {
       const originalKey = button.dataset.completeReview;
       const task = findTaskByKey(data, originalKey);
       if (!task) return;
+
+      if (!isReviewTask(task)) {
+        state.completedReviewFocusKeys.add(originalKey);
+        showState("Focus item reviewed. The task is still in Tasks.", "success");
+        render();
+        return;
+      }
 
       const updatedTask = reviewedTask(task);
       button.disabled = true;
