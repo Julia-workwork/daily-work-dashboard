@@ -144,6 +144,10 @@ function isDone(task) {
   return task.status === "Done";
 }
 
+function isReviewTask(task) {
+  return Boolean(task.needsReview || String(task.status || "").includes("Review"));
+}
+
 function isWorkflowMonthlyOngoingTask(task) {
   const text = normalizeEscapedText([task.taskName, task.nextAction].filter(Boolean).join(" "));
   return /\[JL\]\s*Monthly Ongoing|Monthly Ongoing\s*-/i.test(text);
@@ -1527,13 +1531,20 @@ function dailyRecordGroup(group) {
 
 function renderOverview(data) {
   const monthKey = selectedMonthKey(data);
-  const monthTasks = allTasks(data).filter((task) => taskMonthKey(task) === monthKey);
+  const tasks = allTasks(data);
+  const monthTasks = tasks.filter((task) => taskMonthKey(task) === monthKey);
   const openTasks = countBy(monthTasks, (task) => !isDone(task));
-  const reviewTasks = countBy(monthTasks, (task) => task.needsReview || String(task.status).includes("Review"));
+  const reviewTasks = countBy(tasks, (task) => !isDone(task) && isReviewTask(task));
   const latestDaily = data.dailyExtracts[data.dailyExtracts.length - 1] || {};
-  const focusTasks = monthTasks
-    .filter((task) => !isDone(task) && (task.needsReview || String(task.status).includes("Review") || !task.dueDate || task.dueDate <= todayIso()))
-    .slice(0, 3);
+  const focusTasks = tasks
+    .filter((task) => {
+      if (isDone(task)) return false;
+      if (isReviewTask(task)) return true;
+      if (taskMonthKey(task) !== monthKey) return false;
+      return !task.dueDate || task.dueDate <= todayIso();
+    })
+    .sort((left, right) => Number(isReviewTask(right)) - Number(isReviewTask(left)))
+    .slice(0, 5);
   const monthly = monthlyLeadershipReport(data, monthKey);
   const selectedReport = selectedWeeklyReport(monthly);
   const ongoingItems = weeklyOngoingItems(data, selectedReport?.week || data.weeklyReview.weekRange).slice(0, 6);

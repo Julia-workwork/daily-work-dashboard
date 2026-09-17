@@ -468,6 +468,9 @@ test("task dialogs use selectable categories and clean escaped text while editin
   assert.match(source, /form\.elements\.category\.value = normalizeEscapedText\(task\.category \|\| "Other"\)/);
   assert.match(source, /Mark for review/);
   assert.match(source, /Flags this item in Focus Items and Needs Review/);
+  assert.match(source, /function isReviewTask\(task\)/);
+  assert.match(source, /if \(isReviewTask\(task\)\) return true/);
+  assert.match(source, /\.sort\(\(left, right\) => Number\(isReviewTask\(right\)\) - Number\(isReviewTask\(left\)\)\)/);
   assert.doesNotMatch(source, /list="edit-category-options"/);
   assert.doesNotMatch(source, /id="edit-category-options"/);
 });
