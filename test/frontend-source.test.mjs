@@ -471,6 +471,15 @@ test("task dialogs use selectable categories and clean escaped text while editin
   assert.match(source, /function isReviewTask\(task\)/);
   assert.match(source, /if \(isReviewTask\(task\)\) return true/);
   assert.match(source, /\.sort\(\(left, right\) => Number\(isReviewTask\(right\)\) - Number\(isReviewTask\(left\)\)\)/);
+  assert.match(source, /data-complete-review/);
+  assert.match(source, /Review Done/);
+  assert.match(source, /function reviewedTask\(task\)/);
+  assert.match(source, /needsReview:\s*false/);
+  assert.match(source, /status\.includes\("Review"\) \? "In Progress" : task\.status/);
+  assert.match(source, /function bindReviewDoneButtons\(data\)/);
+  assert.match(source, /replaceTaskInState\(data,\s*savedTask,\s*originalKey\)/);
+  assert.match(source, /completedReviewFocusKeys/);
+  assert.match(source, /bindReviewDoneButtons\(data\)/);
   assert.doesNotMatch(source, /list="edit-category-options"/);
   assert.doesNotMatch(source, /id="edit-category-options"/);
 });

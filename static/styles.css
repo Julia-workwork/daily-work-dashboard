@@ -524,6 +524,14 @@ main {
   color: #1d1d1f;
 }
 
+.review-done-action {
+  flex: 0 0 auto;
+  border-color: rgba(11, 122, 78, 0.22);
+  background: rgba(223, 246, 232, 0.82);
+  color: #0b7a4e;
+  padding: 7px 11px;
+}
+
 .stamp-chip {
   display: inline-flex;
   align-items: center;

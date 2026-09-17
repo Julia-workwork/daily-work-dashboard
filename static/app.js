@@ -5,6 +5,7 @@ const state = {
   dailyRoutineDirtyDate: "",
   selectedWeek: "",
   visibleTasks: [],
+  completedReviewFocusKeys: new Set(),
   filters: {
     month: currentMonthKey(),
     week: "All",
@@ -1363,6 +1364,9 @@ function actionHero() {
 function taskRow(task, index) {
   const taskTitle = cleanTaskText(task.taskName || "Untitled task") || "Untitled task";
   const taskDetail = cleanTaskText(task.nextAction || task.category || "Confirm next action") || "Confirm next action";
+  const reviewAction = isReviewTask(task)
+    ? `<button class="text-action review-done-action" type="button" data-complete-review="${taskKey(task)}">Review Done</button>`
+    : "";
   return `
     <article class="focus-row">
       <span class="row-index">${String(index + 1).padStart(2, "0")}</span>
@@ -1372,6 +1376,7 @@ function taskRow(task, index) {
       </div>
       <div class="focus-actions">
         <div class="focus-stamps">${taskStatusChips(task)}</div>
+        ${reviewAction}
         ${editTaskButton(task, "focus-edit-action")}
       </div>
     </article>
@@ -1539,6 +1544,7 @@ function renderOverview(data) {
   const focusTasks = tasks
     .filter((task) => {
       if (isDone(task)) return false;
+      if (state.completedReviewFocusKeys.has(taskKey(task))) return false;
       if (isReviewTask(task)) return true;
       if (taskMonthKey(task) !== monthKey) return false;
       return !task.dueDate || task.dueDate <= todayIso();
@@ -1619,6 +1625,7 @@ function renderOverview(data) {
   });
   bindTaskEditor(data, elements.overview);
   bindEditTaskButtons(data, elements.overview);
+  bindReviewDoneButtons(data);
 }
 
 function filterSelect(label, key, values, includeAll = true) {
@@ -2039,6 +2046,41 @@ function bindEditTaskButtons(data, root = document) {
               : "This record has no source id, so saving will create a Workflow Tasks row.";
       }
       dialog.showModal();
+    });
+  });
+}
+
+function reviewedTask(task) {
+  const status = String(task.status || "");
+  return {
+    ...task,
+    needsReview: false,
+    status: status.includes("Review") ? "In Progress" : task.status,
+  };
+}
+
+function bindReviewDoneButtons(data) {
+  elements.overview.querySelectorAll("[data-complete-review]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const originalKey = button.dataset.completeReview;
+      const task = findTaskByKey(data, originalKey);
+      if (!task) return;
+
+      const updatedTask = reviewedTask(task);
+      button.disabled = true;
+      button.textContent = "Saving...";
+      try {
+        const result = await saveTaskEdit(updatedTask);
+        const savedTask = { ...updatedTask, ...(result.task || {}) };
+        replaceTaskInState(data, savedTask, originalKey);
+        state.completedReviewFocusKeys.add(taskKey(savedTask));
+        showState("Review marked done. The task is still in Tasks.", "success");
+        render();
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = "Review Done";
+        showState(error instanceof Error ? error.message : "Could not mark review done.", "error");
+      }
     });
   });
 }
