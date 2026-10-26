@@ -43,8 +43,19 @@ test("buildTodayFocus includes this week, overdue, and review tasks", () => {
 
   assert.deepEqual(
     buildTodayFocus(tasks, "2026-06-17").map((task) => task.taskName),
-    ["Overdue", "This week p2", "Review flag", "This week source"],
+    ["Overdue", "This week p2", "Review flag", "This week source", "Done p1"],
   );
+});
+
+test("review focus has no age or count limit and keeps completed tasks", () => {
+  const tasks = Array.from({ length: 120 }, (_, index) => ({
+    taskName: `Review ${index}`, status: "Done", priority: "P2",
+    dueDate: "2025-01-01", needsReview: true,
+  }));
+  assert.equal(buildTodayFocus(tasks, "2026-10-26").length, 120);
+  tasks[0].needsReview = false;
+  assert.equal(buildTodayFocus(tasks, "2027-01-01").length, 119);
+  assert.equal(tasks.length, 120);
 });
 
 test("sortTasks orders by urgency and completion", () => {

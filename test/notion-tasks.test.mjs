@@ -92,7 +92,7 @@ test("createNotionTask posts a new page to the configured Notion data source", a
   assert.equal(body.properties["Needs Review"].checkbox, false);
 });
 
-test("createNotionTask retries without Needs Review when the data source does not have that property", async () => {
+test("createNotionTask preserves the flag using legacy Review when Needs Review is missing", async () => {
   const calls = [];
   const result = await createNotionTask(
     {
@@ -129,9 +129,10 @@ test("createNotionTask retries without Needs Review when the data source does no
   assert.equal(calls.length, 2);
   assert.ok(JSON.parse(calls[0].options.body).properties["Needs Review"]);
   assert.equal(JSON.parse(calls[1].options.body).properties["Needs Review"], undefined);
+  assert.deepEqual(JSON.parse(calls[1].options.body).properties.Review, { checkbox: true });
 });
 
-test("updateNotionTask retries without Needs Review when the page data source does not have that property", async () => {
+test("updateNotionTask clears legacy Review when Needs Review is missing", async () => {
   const calls = [];
   const result = await updateNotionTask(
     {
@@ -142,7 +143,7 @@ test("updateNotionTask retries without Needs Review when the page data source do
         status: "Done",
         priority: "P2",
         category: "User Feedback",
-        needsReview: true,
+        needsReview: false,
       },
     },
     {
@@ -168,4 +169,24 @@ test("updateNotionTask retries without Needs Review when the page data source do
   assert.equal(calls.length, 2);
   assert.ok(JSON.parse(calls[0].options.body).properties["Needs Review"]);
   assert.equal(JSON.parse(calls[1].options.body).properties["Needs Review"], undefined);
+  assert.deepEqual(JSON.parse(calls[1].options.body).properties.Review, { checkbox: false });
+});
+
+test("review saves fail explicitly if neither review property exists", async () => {
+  for (const save of [createNotionTask, updateNotionTask]) {
+    const calls = [];
+    await assert.rejects(save({
+      token: "secret", dataSourceId: "db", pageId: "page",
+      task: { taskName: "Keep reminder", needsReview: true },
+    }, {
+      fetchImpl: async (_url, options) => {
+        const body = JSON.parse(options.body);
+        calls.push(body);
+        const property = body.properties["Needs Review"] ? "Needs Review" : "Review";
+        return { ok: false, status: 400, json: async () => ({ message: `${property} is not a property that exists.` }) };
+      },
+    }), /Review is not a property that exists/);
+    assert.equal(calls.length, 2);
+    assert.equal(calls[1].properties.Review.checkbox, true);
+  }
 });

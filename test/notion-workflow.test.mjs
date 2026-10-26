@@ -130,6 +130,38 @@ test("fetchNotionTasks maps Notion data source pages into dashboard tasks", asyn
   assert.equal(tasks[0].sourceDate, "2026-07-04");
 });
 
+test("task loading retains old completed reviews across pages and honors an explicit cleared flag", async () => {
+  const requests = [];
+  const tasks = await fetchNotionTasks({ token: "secret", dataSourceId: "db" }, {
+    fetchImpl: async (_url, options) => {
+      const body = JSON.parse(options.body);
+      requests.push(body);
+      const secondPage = Boolean(body.start_cursor);
+      return { ok: true, json: async () => ({
+        results: [{
+          id: secondPage ? "cleared" : "old-review",
+          created_time: "2025-01-01T00:00:00Z",
+          properties: {
+            "Task Name": { title: [{ plain_text: "Old completed task" }] },
+            Status: { status: { name: "Done" } },
+            "Needs Review": { checkbox: !secondPage },
+            Review: { checkbox: true },
+          },
+        }],
+        has_more: !secondPage,
+        next_cursor: secondPage ? null : "next",
+      }) };
+    },
+  });
+  assert.equal(tasks.length, 2);
+  assert.equal(tasks[0].needsReview, true);
+  assert.equal(tasks[0].status, "Done");
+  assert.equal(tasks[0].sourceDate, "2025-01-01");
+  assert.equal(tasks[1].needsReview, false);
+  assert.equal(requests[1].start_cursor, "next");
+  assert.ok(requests.every(request => !request.filter));
+});
+
 test("fetchDailyWorkBlocks maps Notion todo blocks into editable daily source tasks", async () => {
   const source = await fetchDailyWorkBlocks(
     {

@@ -1531,23 +1531,27 @@ function dailyRecordGroup(group) {
   `;
 }
 
+function overviewFocusTasks(tasks, monthKey) {
+  return tasks
+    .filter((task) => {
+      // A review reminder is independent of task completion, date, or prior dismissal.
+      if (isReviewTask(task)) return true;
+      if (isDone(task)) return false;
+      if (state.completedReviewFocusKeys.has(taskKey(task))) return false;
+      if (taskMonthKey(task) !== monthKey) return false;
+      return !task.dueDate || task.dueDate <= todayIso();
+    })
+    .sort((left, right) => Number(isReviewTask(right)) - Number(isReviewTask(left)));
+}
+
 function renderOverview(data) {
   const monthKey = selectedMonthKey(data);
   const tasks = allTasks(data);
   const monthTasks = tasks.filter((task) => taskMonthKey(task) === monthKey);
   const openTasks = countBy(monthTasks, (task) => !isDone(task));
-  const reviewTasks = countBy(tasks, (task) => !isDone(task) && isReviewTask(task));
+  const reviewTasks = countBy(tasks, isReviewTask);
   const latestDaily = data.dailyExtracts[data.dailyExtracts.length - 1] || {};
-  const focusTasks = tasks
-    .filter((task) => {
-      if (isDone(task)) return false;
-      if (state.completedReviewFocusKeys.has(taskKey(task))) return false;
-      if (isReviewTask(task)) return true;
-      if (taskMonthKey(task) !== monthKey) return false;
-      return !task.dueDate || task.dueDate <= todayIso();
-    })
-    .sort((left, right) => Number(isReviewTask(right)) - Number(isReviewTask(left)))
-    .slice(0, 5);
+  const focusTasks = overviewFocusTasks(tasks, monthKey);
   const monthly = monthlyLeadershipReport(data, monthKey);
   const selectedReport = selectedWeeklyReport(monthly);
   const ongoingItems = weeklyOngoingItems(data, selectedReport?.week || data.weeklyReview.weekRange).slice(0, 6);
